@@ -1,20 +1,40 @@
 package main
 
 import (
+	"context"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/lardira/playtrack/internal/server"
 )
 
 func main() {
-	opts := server.Options{
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	serverErrChan := make(chan error)
+
+	server := server.New(server.Options{
 		Host: "localhost",
 		Port: 8080, //TODO: -> .env
-	}
-	server := server.New(opts)
+	})
+	defer server.Shutdown()
 
-	if err := server.Run(); err != nil {
-		log.Fatal(err)
+	go func() {
+		defer close(serverErrChan)
+		serverErrChan <- server.Run()
+	}()
+
+	select {
+	case err, ok := <-serverErrChan:
+		if ok && err != http.ErrServerClosed {
+			log.Printf("error on running: %v", err)
+		}
+
+	case <-ctx.Done():
+		log.Println("kill signal fired")
 	}
-	log.Println("server shutdown")
 }
