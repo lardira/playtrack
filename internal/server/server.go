@@ -2,29 +2,36 @@ package server
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/lardira/playtrack/internal/db"
 	"github.com/lardira/playtrack/internal/tech"
 )
 
 type Options struct {
-	Host string
-	Port int
+	Host        string
+	Port        int
+	DatabaseURL string
 }
 
 type Server struct {
 	Options
 
 	server *http.Server
-	db     *sql.DB
+	db     *pgxpool.Pool
 }
 
-func New(opts Options) *Server {
+func New(ctx context.Context, opts Options) (*Server, error) {
+	dbpool, err := db.NewPostgres(ctx, opts.DatabaseURL)
+	if err != nil {
+		return nil, err
+	}
+
 	mux := http.NewServeMux()
 	server := http.Server{
 		Addr:    fmt.Sprintf("%s:%d", opts.Host, opts.Port),
@@ -39,7 +46,8 @@ func New(opts Options) *Server {
 	return &Server{
 		Options: opts,
 		server:  &server,
-	}
+		db:      dbpool,
+	}, nil
 }
 
 func (s *Server) Run() error {
@@ -47,14 +55,14 @@ func (s *Server) Run() error {
 	return s.server.ListenAndServe()
 }
 
-func (s *Server) Shutdown() {
+func (s *Server) Shutdown(ctx context.Context) {
 	log.Println("shutting down...")
 
 	if s.db != nil {
 		s.db.Close()
 	}
 
-	s.server.Shutdown(context.Background())
+	s.server.Shutdown(ctx)
 }
 
 func (s *Server) prompt() {
