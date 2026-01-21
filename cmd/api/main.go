@@ -25,8 +25,8 @@ func main() {
 	serverErrChan := make(chan error)
 
 	opts := server.Options{
-		Host:        "localhost",
-		Port:        8080, //TODO: -> .env
+		Host:        envutil.GetOrDefault("SERVER_HOST", "localhost"),
+		Port:        envutil.GetOrDefault("SERVER_PORT", "8080"), //TODO: -> .env
 		DatabaseURL: envutil.MustGet("DB_URL"),
 	}
 	server, err := server.New(ctx, opts)

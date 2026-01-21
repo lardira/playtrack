@@ -15,7 +15,7 @@ import (
 
 type Options struct {
 	Host        string
-	Port        int
+	Port        string
 	DatabaseURL string
 }
 
@@ -34,12 +34,12 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 
 	mux := http.NewServeMux()
 	server := http.Server{
-		Addr:    fmt.Sprintf("%s:%d", opts.Host, opts.Port),
+		Addr:    fmt.Sprintf("%s:%s", opts.Host, opts.Port),
 		Handler: mux,
 	}
 	api := humago.New(mux, huma.DefaultConfig("playtrack API", "1.0.0"))
 
-	techHandler := tech.NewHandler()
+	techHandler := tech.NewHandler(dbpool)
 
 	techHandler.Register(api)
 
