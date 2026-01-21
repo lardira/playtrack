@@ -26,7 +26,7 @@ func main() {
 
 	opts := server.Options{
 		Host:        envutil.GetOrDefault("SERVER_HOST", "localhost"),
-		Port:        envutil.GetOrDefault("SERVER_PORT", "8080"), //TODO: -> .env
+		Port:        envutil.GetOrDefault("SERVER_PORT", "8080"),
 		DatabaseURL: envutil.MustGet("DB_URL"),
 	}
 	server, err := server.New(ctx, opts)
