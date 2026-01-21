@@ -3,6 +3,8 @@ package envutil
 import (
 	"log"
 	"os"
+
+	"github.com/joho/godotenv"
 )
 
 func MustGet(key string) string {
@@ -12,4 +14,17 @@ func MustGet(key string) string {
 	}
 
 	return s
+}
+
+func LoadEnvs() error {
+	envPath := os.Getenv("ENV_PATH")
+	if envPath == "" {
+		envPath = "./.env"
+	}
+
+	if err := godotenv.Load(envPath); err != nil {
+		return err
+	}
+
+	return nil
 }

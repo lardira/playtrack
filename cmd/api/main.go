@@ -6,21 +6,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path"
 	"syscall"
 
-	"github.com/joho/godotenv"
 	"github.com/lardira/playtrack/internal/pkg/envutil"
 	"github.com/lardira/playtrack/internal/server"
 )
 
 func init() {
-	dir, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if err := godotenv.Load(path.Join(dir, ".env")); err != nil {
+	if err := envutil.LoadEnvs(); err != nil {
 		log.Fatal(err)
 	}
 }
