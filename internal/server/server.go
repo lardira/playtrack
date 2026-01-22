@@ -40,8 +40,10 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 	}
 	api := humago.New(mux, huma.DefaultConfig("playtrack API", "1.0.0"))
 
+	gameRepository := game.NewPGRepository(dbpool)
+
 	techHandler := tech.NewHandler(dbpool)
-	gameHandler := game.NewHandler()
+	gameHandler := game.NewHandler(gameRepository)
 
 	techHandler.Register(api)
 	gameHandler.Register(api)
