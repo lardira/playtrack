@@ -26,14 +26,10 @@ func GetOrDefault(key, def string) string {
 }
 
 func LoadEnvs() error {
-	envPath, ok := os.LookupEnv("ENV_PATH")
-	if !ok {
-		envPath = "./.env"
-	}
+	envPath := GetOrDefault("ENV_PATH", "./.env")
 
 	if err := godotenv.Load(envPath); err != nil {
 		return err
 	}
-
 	return nil
 }
