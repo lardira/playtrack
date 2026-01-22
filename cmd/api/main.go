@@ -1,20 +1,52 @@
 package main
 
 import (
+	"context"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/lardira/playtrack/internal/pkg/envutil"
 	"github.com/lardira/playtrack/internal/server"
 )
 
-func main() {
-	opts := server.Options{
-		Host: "localhost",
-		Port: 8080, //TODO: -> .env
-	}
-	server := server.New(opts)
-
-	if err := server.Run(); err != nil {
+func init() {
+	if err := envutil.LoadEnvs(); err != nil {
 		log.Fatal(err)
 	}
-	log.Println("server shutdown")
+}
+
+func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	serverErrChan := make(chan error)
+
+	opts := server.Options{
+		Host:        envutil.GetOrDefault("SERVER_HOST", "localhost"),
+		Port:        envutil.GetOrDefault("SERVER_PORT", "8080"),
+		DatabaseURL: envutil.MustGet("DB_URL"),
+	}
+	server, err := server.New(ctx, opts)
+	if err != nil {
+		log.Fatalf("error on setting up: %v", err)
+	}
+	defer server.Shutdown(ctx)
+
+	go func() {
+		defer close(serverErrChan)
+		serverErrChan <- server.Run()
+	}()
+
+	select {
+	case err, ok := <-serverErrChan:
+		if ok && err != http.ErrServerClosed {
+			log.Printf("error on running: %v", err)
+		}
+
+	case <-ctx.Done():
+		log.Println("kill signal fired")
+	}
 }
