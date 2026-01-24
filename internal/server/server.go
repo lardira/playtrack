@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lardira/playtrack/internal/db"
 	"github.com/lardira/playtrack/internal/domain/game"
+	"github.com/lardira/playtrack/internal/domain/player"
 	"github.com/lardira/playtrack/internal/tech"
 )
 
@@ -41,12 +42,15 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 	api := humago.New(mux, huma.DefaultConfig("playtrack API", "1.0.0"))
 
 	gameRepository := game.NewPGRepository(dbpool)
+	playerRepository := player.NewPGRepository(dbpool)
 
 	techHandler := tech.NewHandler(dbpool)
 	gameHandler := game.NewHandler(gameRepository)
+	playerHandler := player.NewHandler(playerRepository)
 
 	techHandler.Register(api)
 	gameHandler.Register(api)
+	playerHandler.Register(api)
 
 	return &Server{
 		Options: opts,

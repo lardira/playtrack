@@ -1,6 +1,6 @@
 package game
 
-type RequestCreate struct {
+type RequestCreateGame struct {
 	Body struct {
 		Points      int     `json:"points"`
 		HoursToBeat int     `json:"hours_to_beat"`
