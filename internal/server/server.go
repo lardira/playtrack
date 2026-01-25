@@ -41,6 +41,7 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 	}
 	api := humago.New(mux, huma.DefaultConfig("playtrack API", "1.0.0"))
 
+	// TODO: use squirell for query building
 	gameRepository := game.NewPGRepository(dbpool)
 	playerRepository := player.NewPGRepository(dbpool)
 

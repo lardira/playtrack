@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -71,6 +72,33 @@ func (r *PGRepository) Insert(ctx context.Context, player *Player) (string, erro
 
 	row := r.pool.QueryRow(ctx, query, args)
 	err := row.Scan(&id)
+	if err != nil {
+		return id, err
+	}
+	return id, nil
+}
+
+func (r *PGRepository) Update(ctx context.Context, playerID string, player *PlayerUpdate) (string, error) {
+	var id string
+	updBuild := sq.Update("player").PlaceholderFormat(sq.Dollar)
+
+	if player.Email != nil {
+		updBuild = updBuild.Set("email", *player.Email)
+	}
+	if player.Img != nil {
+		updBuild = updBuild.Set("img", *player.Img)
+	}
+	if player.Username != nil {
+		updBuild = updBuild.Set("username", *player.Username)
+	}
+
+	query, args, err := updBuild.Where(sq.Eq{"id": playerID}).Suffix("RETURNING id").ToSql()
+	if err != nil {
+		return id, err
+	}
+
+	row := r.pool.QueryRow(ctx, query, args...)
+	err = row.Scan(&id)
 	if err != nil {
 		return id, err
 	}

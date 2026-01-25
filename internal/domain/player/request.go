@@ -9,6 +9,15 @@ type RequestCreatePlayer struct {
 	}
 }
 
+type RequestUpdatePlayer struct {
+	PlayerID string `path:"id" format:"uuid"`
+	Body     struct {
+		Username *string `json:"username" required:"false"`
+		Img      *string `json:"img" required:"false"`
+		Email    *string `json:"email" format:"email" required:"false"`
+	}
+}
+
 type RequestCreatePlayedGame struct {
 	PlayerID string `path:"id" format:"uuid"`
 	Body     struct {

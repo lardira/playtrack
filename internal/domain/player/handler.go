@@ -14,6 +14,7 @@ type PlayerRepository interface {
 	FindAll(context.Context) ([]Player, error)
 	FindOne(ctx context.Context, id string) (*Player, error)
 	Insert(context.Context, *Player) (string, error)
+	Update(ctx context.Context, playerID string, player *PlayerUpdate) (string, error)
 	FindAllPlayedGames(ctx context.Context, playerID string) ([]PlayedGame, error)
 	FindOnePlayedGame(ctx context.Context, playerID string, id int) (*PlayedGame, error)
 	InsertPlayedGame(ctx context.Context, player *PlayedGame) (int, error)
@@ -45,7 +46,7 @@ func (h *Handler) Register(api huma.API) {
 	// huma.Get(grp, "/leaderboard", h.GetAll)
 	huma.Get(grp, "/{id}", h.GetOne)
 	huma.Post(grp, "/", h.Create)
-	huma.Patch(grp, "/{id}", domain.EndpointNotImplemented)
+	huma.Patch(grp, "/{id}", h.Update)
 	huma.Get(grp, "/{id}/played-games", h.GetAllPlayedGames)
 	huma.Get(grp, "/{id}/played-games/{gameID}", h.GetOnePlayedGame)
 	huma.Post(grp, "/{id}/played-games", h.CreatePlayedGame)
@@ -99,6 +100,29 @@ func (h *Handler) Create(
 	id, err := h.playerRepository.Insert(ctx, &nPlayer)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("create", err)
+	}
+
+	resp := domain.ResponseID[string]{}
+	resp.Body.ID = id
+	return &resp, nil
+}
+
+func (h *Handler) Update(
+	ctx context.Context,
+	i *RequestUpdatePlayer,
+) (*domain.ResponseID[string], error) {
+	nPlayer := PlayerUpdate{
+		Username: i.Body.Username,
+		Img:      i.Body.Img,
+		Email:    i.Body.Email,
+	}
+	if err := nPlayer.Valid(); err != nil {
+		return nil, huma.Error400BadRequest("entity is not valid", err)
+	}
+
+	id, err := h.playerRepository.Update(ctx, i.PlayerID, &nPlayer)
+	if err != nil {
+		return nil, huma.Error500InternalServerError("update", err)
 	}
 
 	resp := domain.ResponseID[string]{}

@@ -51,6 +51,19 @@ func (p *Player) Valid() error {
 	return nil
 }
 
+type PlayerUpdate struct {
+	Username *string
+	Img      *string
+	Email    *string
+}
+
+func (p *PlayerUpdate) Valid() error {
+	if p.Username != nil && len(*p.Username) < minUsernameLength {
+		return fmt.Errorf("username must not be less than %d symbols", minUsernameLength)
+	}
+	return nil
+}
+
 type PlayedGame struct {
 	ID          int              `json:"id"`
 	PlayerID    string           `json:"player_id"`
