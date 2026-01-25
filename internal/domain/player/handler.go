@@ -243,8 +243,9 @@ func (h *Handler) UpdatePlayedGame(
 				return nil, huma.Error400BadRequest("game played find", err)
 			}
 
+			// consecutive drops are stacked
 			if err == nil && prevGame.Status == PlayedGameStatusDropped {
-				newPoints = prevGame.Points * 2
+				newPoints = prevGame.Points - 1
 			}
 
 			nGame.Points = &newPoints
