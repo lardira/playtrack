@@ -17,11 +17,14 @@ type PlayerRepository interface {
 	FindOne(ctx context.Context, id string) (*Player, error)
 	Insert(context.Context, *Player) (string, error)
 	Update(ctx context.Context, player *PlayerUpdate) (string, error)
-	FindAllPlayedGames(ctx context.Context, playerID string) ([]PlayedGame, error)
-	FindOnePlayedGame(ctx context.Context, playerID string, id int) (*PlayedGame, error)
-	FindLastPlayedGame(ctx context.Context, playerID string) (*PlayedGame, error)
-	InsertPlayedGame(ctx context.Context, player *PlayedGame) (int, error)
-	UpdatePlayedGame(ctx context.Context, game *PlayedGameUpdate) (string, error)
+}
+
+type PlayedGameRepository interface {
+	FindAll(ctx context.Context, playerID string) ([]PlayedGame, error)
+	FindOne(ctx context.Context, playerID string, id int) (*PlayedGame, error)
+	FindLast(ctx context.Context, playerID string) (*PlayedGame, error)
+	Insert(ctx context.Context, player *PlayedGame) (int, error)
+	Update(ctx context.Context, game *PlayedGameUpdate) (string, error)
 }
 
 type GameRepository interface {
@@ -29,14 +32,20 @@ type GameRepository interface {
 }
 
 type Handler struct {
-	playerRepository PlayerRepository
-	gameRepository   GameRepository
+	playerRepository     PlayerRepository
+	playedGameRepository PlayedGameRepository
+	gameRepository       GameRepository
 }
 
-func NewHandler(playerRepository PlayerRepository, gameRepository GameRepository) *Handler {
+func NewHandler(
+	playerRepository PlayerRepository,
+	gameRepository GameRepository,
+	playedGameRepository PlayedGameRepository,
+) *Handler {
 	return &Handler{
-		playerRepository: playerRepository,
-		gameRepository:   gameRepository,
+		playerRepository:     playerRepository,
+		playedGameRepository: playedGameRepository,
+		gameRepository:       gameRepository,
 	}
 }
 
@@ -138,7 +147,7 @@ func (h *Handler) Update(
 func (h *Handler) GetAllPlayedGames(ctx context.Context, i *struct {
 	ID string `path:"id" format:"uuid"`
 }) (*domain.ResponseItems[PlayedGame], error) {
-	games, err := h.playerRepository.FindAllPlayedGames(ctx, i.ID)
+	games, err := h.playedGameRepository.FindAll(ctx, i.ID)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("find all", err)
 	}
@@ -152,7 +161,7 @@ func (h *Handler) GetOnePlayedGame(ctx context.Context, i *struct {
 	ID     string `path:"id" format:"uuid"`
 	GameID int    `path:"gameID"`
 }) (*domain.ResponseItem[PlayedGame], error) {
-	game, err := h.playerRepository.FindOnePlayedGame(ctx, i.ID, i.GameID)
+	game, err := h.playedGameRepository.FindOne(ctx, i.ID, i.GameID)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("find", err)
 	}
@@ -185,7 +194,7 @@ func (h *Handler) CreatePlayedGame(
 		return nil, err
 	}
 
-	id, err := h.playerRepository.InsertPlayedGame(ctx, &nPlayed)
+	id, err := h.playedGameRepository.Insert(ctx, &nPlayed)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("create", err)
 	}
@@ -212,7 +221,7 @@ func (h *Handler) UpdatePlayedGame(
 		return nil, huma.Error400BadRequest("entity is not valid", err)
 	}
 
-	playedGame, err := h.playerRepository.FindOnePlayedGame(ctx, i.PlayerID, i.GameID)
+	playedGame, err := h.playedGameRepository.FindOne(ctx, i.PlayerID, i.GameID)
 	if err != nil {
 		return nil, huma.Error400BadRequest("entity is not found", err)
 	}
@@ -229,7 +238,7 @@ func (h *Handler) UpdatePlayedGame(
 		case PlayedGameStatusDropped:
 			newPoints = -1
 
-			prevGame, err := h.playerRepository.FindLastPlayedGame(ctx, i.PlayerID)
+			prevGame, err := h.playedGameRepository.FindLast(ctx, i.PlayerID)
 			if err != nil && !errors.Is(err, ErrPlayedGameNotFound) {
 				return nil, huma.Error400BadRequest("game played find", err)
 			}
@@ -247,7 +256,7 @@ func (h *Handler) UpdatePlayedGame(
 		}
 	}
 
-	id, err := h.playerRepository.UpdatePlayedGame(ctx, &nGame)
+	id, err := h.playedGameRepository.Update(ctx, &nGame)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("update", err)
 	}
@@ -258,7 +267,7 @@ func (h *Handler) UpdatePlayedGame(
 }
 
 func (h *Handler) containsNonterminatedPlayed(ctx context.Context, playerID string) error {
-	allPlayed, err := h.playerRepository.FindAllPlayedGames(ctx, playerID)
+	allPlayed, err := h.playedGameRepository.FindAll(ctx, playerID)
 	if err != nil {
 		return huma.Error400BadRequest("find played games", err)
 	}
