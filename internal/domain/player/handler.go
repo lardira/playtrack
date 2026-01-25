@@ -227,14 +227,14 @@ func (h *Handler) UpdatePlayedGame(
 		now := time.Now()
 		switch status {
 		case PlayedGameStatusDropped:
+			newPoints = -1
+
 			prevGame, err := h.playerRepository.FindLastPlayedGame(ctx, i.PlayerID)
-			if err != nil {
-				if errors.Is(err, ErrPlayedGameNotFound) {
-					newPoints = -1
-				} else {
-					return nil, huma.Error400BadRequest("game played find", err)
-				}
-			} else {
+			if err != nil && !errors.Is(err, ErrPlayedGameNotFound) {
+				return nil, huma.Error400BadRequest("game played find", err)
+			}
+
+			if err == nil && prevGame.Status == PlayedGameStatusDropped {
 				newPoints = prevGame.Points * 2
 			}
 
