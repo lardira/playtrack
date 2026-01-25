@@ -11,6 +11,11 @@ const (
 	minUsernameLength = 4
 )
 
+const (
+	minRating = 1
+	maxRating = 100
+)
+
 type PlayedGameStatus string
 
 const (
@@ -26,6 +31,14 @@ var (
 		PlayedGameStatusCompleted,
 		PlayedGameStatusDropped,
 		PlayedGameStatusRerolled,
+	}
+
+	validPlayedGameStatuses = map[PlayedGameStatus][]PlayedGameStatus{
+		PlayedGameStatusAdded:      {PlayedGameStatusInProgress, PlayedGameStatusCompleted, PlayedGameStatusDropped, PlayedGameStatusRerolled},
+		PlayedGameStatusInProgress: {PlayedGameStatusCompleted, PlayedGameStatusDropped, PlayedGameStatusRerolled},
+		PlayedGameStatusDropped:    {},
+		PlayedGameStatusRerolled:   {},
+		PlayedGameStatusCompleted:  {},
 	}
 )
 
@@ -52,6 +65,7 @@ func (p *Player) Valid() error {
 }
 
 type PlayerUpdate struct {
+	ID       string
 	Username *string
 	Img      *string
 	Email    *string
@@ -84,6 +98,31 @@ func (pg *PlayedGame) Valid() error {
 
 func (pg *PlayedGame) StatusTerminated() bool {
 	return slices.Contains(terminatedStatus, pg.Status)
+}
+
+func (pg *PlayedGame) StatusNextValid(next PlayedGameStatus) error {
+	nextMp := validPlayedGameStatuses[pg.Status]
+	if ok := slices.Contains(nextMp, next); !ok {
+		return fmt.Errorf("next status is not in possible: %v", nextMp)
+	}
+	return nil
+}
+
+type PlayedGameUpdate struct {
+	ID          int
+	Points      *int
+	Comment     *string
+	Rating      *int
+	Status      *PlayedGameStatus
+	CompletedAt *time.Time
+	PlayTime    *time.Duration
+}
+
+func (p *PlayedGameUpdate) Valid() error {
+	if p.Rating != nil && (*p.Rating < minRating || *p.Rating > maxRating) {
+		return fmt.Errorf("rating must be in range [%v; %v]", minRating, maxRating)
+	}
+	return nil
 }
 
 type LeaderboardPlayer struct {

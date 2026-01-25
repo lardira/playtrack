@@ -2,12 +2,17 @@ package player
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+var (
+	ErrPlayedGameNotFound = errors.New("played game is not found")
 )
 
 var (
@@ -78,7 +83,7 @@ func (r *PGRepository) Insert(ctx context.Context, player *Player) (string, erro
 	return id, nil
 }
 
-func (r *PGRepository) Update(ctx context.Context, playerID string, player *PlayerUpdate) (string, error) {
+func (r *PGRepository) Update(ctx context.Context, player *PlayerUpdate) (string, error) {
 	var id string
 	updBuild := sq.Update("player").PlaceholderFormat(sq.Dollar)
 
@@ -92,7 +97,7 @@ func (r *PGRepository) Update(ctx context.Context, playerID string, player *Play
 		updBuild = updBuild.Set("username", *player.Username)
 	}
 
-	query, args, err := updBuild.Where(sq.Eq{"id": playerID}).Suffix("RETURNING id").ToSql()
+	query, args, err := updBuild.Where(sq.Eq{"id": player.ID}).Suffix("RETURNING id").ToSql()
 	if err != nil {
 		return id, err
 	}
@@ -134,6 +139,21 @@ func (r *PGRepository) FindOnePlayedGame(ctx context.Context, playerID string, i
 	return p, nil
 }
 
+func (r *PGRepository) FindLastPlayedGame(ctx context.Context, playerID string) (*PlayedGame, error) {
+	query := fmt.Sprintf(`SELECT %s FROM played_game 
+		WHERE player_id=$1 
+		ORDER BY started_at DESC LIMIT 1 OFFSET 1`, playedGameColumns)
+	row := r.pool.QueryRow(ctx, query, playerID)
+	p, err := playedGameFromRow(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrPlayedGameNotFound
+		}
+		return nil, err
+	}
+	return p, nil
+}
+
 func (r *PGRepository) InsertPlayedGame(ctx context.Context, game *PlayedGame) (int, error) {
 	var id int
 
@@ -150,6 +170,42 @@ func (r *PGRepository) InsertPlayedGame(ctx context.Context, game *PlayedGame) (
 
 	row := r.pool.QueryRow(ctx, query, args)
 	err := row.Scan(&id)
+	if err != nil {
+		return id, err
+	}
+	return id, nil
+}
+
+func (r *PGRepository) UpdatePlayedGame(ctx context.Context, game *PlayedGameUpdate) (string, error) {
+	var id string
+	updBuild := sq.Update("played_game").PlaceholderFormat(sq.Dollar)
+
+	if game.Points != nil {
+		updBuild = updBuild.Set("points", *game.Points)
+	}
+	if game.Comment != nil {
+		updBuild = updBuild.Set("comment", *game.Comment)
+	}
+	if game.Rating != nil {
+		updBuild = updBuild.Set("rating", *game.Rating)
+	}
+	if game.Status != nil {
+		updBuild = updBuild.Set("status", *game.Status)
+	}
+	if game.CompletedAt != nil {
+		updBuild = updBuild.Set("completed_at", *game.CompletedAt)
+	}
+	if game.PlayTime != nil {
+		updBuild = updBuild.Set("play_time", *game.PlayTime)
+	}
+
+	query, args, err := updBuild.Where(sq.Eq{"id": game.ID}).Suffix("RETURNING id").ToSql()
+	if err != nil {
+		return id, err
+	}
+
+	row := r.pool.QueryRow(ctx, query, args...)
+	err = row.Scan(&id)
 	if err != nil {
 		return id, err
 	}

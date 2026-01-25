@@ -2,7 +2,9 @@ package player
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/lardira/playtrack/internal/domain"
@@ -14,10 +16,12 @@ type PlayerRepository interface {
 	FindAll(context.Context) ([]Player, error)
 	FindOne(ctx context.Context, id string) (*Player, error)
 	Insert(context.Context, *Player) (string, error)
-	Update(ctx context.Context, playerID string, player *PlayerUpdate) (string, error)
+	Update(ctx context.Context, player *PlayerUpdate) (string, error)
 	FindAllPlayedGames(ctx context.Context, playerID string) ([]PlayedGame, error)
 	FindOnePlayedGame(ctx context.Context, playerID string, id int) (*PlayedGame, error)
+	FindLastPlayedGame(ctx context.Context, playerID string) (*PlayedGame, error)
 	InsertPlayedGame(ctx context.Context, player *PlayedGame) (int, error)
+	UpdatePlayedGame(ctx context.Context, game *PlayedGameUpdate) (string, error)
 }
 
 type GameRepository interface {
@@ -50,7 +54,7 @@ func (h *Handler) Register(api huma.API) {
 	huma.Get(grp, "/{id}/played-games", h.GetAllPlayedGames)
 	huma.Get(grp, "/{id}/played-games/{gameID}", h.GetOnePlayedGame)
 	huma.Post(grp, "/{id}/played-games", h.CreatePlayedGame)
-	huma.Patch(grp, "/{id}/played-games", domain.EndpointNotImplemented)
+	huma.Patch(grp, "/{id}/played-games/{gameID}", h.UpdatePlayedGame)
 }
 
 func (h *Handler) GetAll(ctx context.Context, i *struct{}) (*domain.ResponseItems[Player], error) {
@@ -112,6 +116,7 @@ func (h *Handler) Update(
 	i *RequestUpdatePlayer,
 ) (*domain.ResponseID[string], error) {
 	nPlayer := PlayerUpdate{
+		ID:       i.PlayerID,
 		Username: i.Body.Username,
 		Img:      i.Body.Img,
 		Email:    i.Body.Email,
@@ -120,7 +125,7 @@ func (h *Handler) Update(
 		return nil, huma.Error400BadRequest("entity is not valid", err)
 	}
 
-	id, err := h.playerRepository.Update(ctx, i.PlayerID, &nPlayer)
+	id, err := h.playerRepository.Update(ctx, &nPlayer)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("update", err)
 	}
@@ -186,6 +191,64 @@ func (h *Handler) CreatePlayedGame(
 	}
 
 	resp := domain.ResponseID[int]{}
+	resp.Body.ID = id
+	return &resp, nil
+}
+
+func (h *Handler) UpdatePlayedGame(
+	ctx context.Context,
+	i *RequestUpdatePlayedGame,
+) (*domain.ResponseID[string], error) {
+	nGame := PlayedGameUpdate{
+		ID:          i.GameID,
+		Points:      i.Body.Points,
+		Comment:     i.Body.Comment,
+		Rating:      i.Body.Rating,
+		Status:      i.Body.Status,
+		CompletedAt: i.Body.CompletedAt,
+		PlayTime:    i.Body.PlayTime,
+	}
+	if err := nGame.Valid(); err != nil {
+		return nil, huma.Error400BadRequest("entity is not valid", err)
+	}
+
+	playedGame, err := h.playerRepository.FindOnePlayedGame(ctx, i.PlayerID, i.GameID)
+	if err != nil {
+		return nil, huma.Error400BadRequest("entity is not found", err)
+	}
+
+	if nGame.Status != nil {
+		status := *nGame.Status
+		if err := playedGame.StatusNextValid(status); err != nil {
+			return nil, huma.Error400BadRequest("entity is not valid", err)
+		}
+
+		newPoints := 0
+		now := time.Now()
+		switch status {
+		case PlayedGameStatusDropped:
+			newPoints = -1
+
+			prevGame, err := h.playerRepository.FindLastPlayedGame(ctx, i.PlayerID)
+			if !errors.Is(err, ErrPlayedGameNotFound) {
+				newPoints = prevGame.Points * 2
+			}
+
+			nGame.Points = &newPoints
+			nGame.CompletedAt = &now
+
+		case PlayedGameStatusRerolled:
+			nGame.Points = &newPoints
+			nGame.CompletedAt = &now
+		}
+	}
+
+	id, err := h.playerRepository.UpdatePlayedGame(ctx, &nGame)
+	if err != nil {
+		return nil, huma.Error500InternalServerError("update", err)
+	}
+
+	resp := domain.ResponseID[string]{}
 	resp.Body.ID = id
 	return &resp, nil
 }
