@@ -6,19 +6,35 @@
   "scripts": {
     "build": "rollup -c",
     "dev": "rollup -c -w",
-    "start": "sirv public --no-clear --port 3000"
+    "start": "sirv public --no-clear --port 8080"
   },
   "devDependencies": {
+    "@rollup/plugin-alias": "^5.1.0",
     "@rollup/plugin-commonjs": "^24.0.0",
     "@rollup/plugin-node-resolve": "^15.0.0",
     "@rollup/plugin-terser": "^0.4.0",
+    "@rollup/plugin-typescript": "^12.3.0",
+    "@tailwindcss/postcss": "^4.1.18",
+    "autoprefixer": "^10.4.23",
+    "postcss": "^8.5.6",
+    "postcss-import": "^16.1.1",
     "rollup": "^3.15.0",
     "rollup-plugin-css-only": "^4.3.0",
     "rollup-plugin-livereload": "^2.0.0",
+    "rollup-plugin-postcss": "^4.0.2",
     "rollup-plugin-svelte": "^7.1.2",
-    "svelte": "^3.55.0"
+    "svelte": "^3.55.0",
+    "svelte-preprocess": "^5.1.4",
+    "tailwindcss": "^4.1.18",
+    "tslib": "^2.8.1",
+    "typescript": "^5.9.3"
   },
   "dependencies": {
-    "sirv-cli": "^2.0.0"
+    "@skeletonlabs/skeleton": "^4.11.0",
+    "@skeletonlabs/tw-plugin": "^0.4.1",
+    "@tailwindcss/forms": "^0.5.11",
+    "@tailwindcss/typography": "^0.5.19",
+    "sirv-cli": "^2.0.0",
+    "svelte-spa-router": "^4.0.1"
   }
 }

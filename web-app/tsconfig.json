@@ -1,0 +1,27 @@
+{
+    "compilerOptions": {
+        "module": "ESNext",
+        "target": "ES2020",
+        "lib": [
+            "ES2020",
+            "DOM"
+        ],
+        "moduleResolution": "node",
+        "resolveJsonModule": true,
+        "allowJs": true,
+        "checkJs": false,
+        "baseUrl": ".",
+        "paths": {
+            "$lib/*": [
+                "./src/lib/*"
+            ]
+        },
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "noEmit": true,
+        "outDir": "./public/build"
+    },
+    "include": [
+        "src/**/*"
+    ]
+}
