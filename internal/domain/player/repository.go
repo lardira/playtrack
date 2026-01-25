@@ -39,6 +39,7 @@ func (r *PGRepository) FindAll(ctx context.Context) ([]Player, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		p, err := playerFromRow(rows)
@@ -118,6 +119,7 @@ func (r *PGRepository) FindAllPlayedGames(ctx context.Context, playerID string) 
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		p, err := playedGameFromRow(rows)
