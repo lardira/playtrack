@@ -2,6 +2,7 @@ package game
 
 import (
 	"context"
+	"math"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/lardira/playtrack/internal/domain"
@@ -63,11 +64,22 @@ func (h *Handler) Create(
 	i *RequestCreateGame,
 ) (*domain.ResponseID[int], error) {
 	nGame := Game{
-		Points:      i.Body.Points,
 		HoursToBeat: i.Body.HoursToBeat,
 		Title:       i.Body.Title,
 		URL:         i.Body.URL,
 	}
+
+	// <=2 hours - 1 point
+	// >2 hours - each next 4 hours +1 point
+	if nGame.HoursToBeat < 2 {
+		nGame.Points = 1
+	} else {
+		// ((x - 1) / 4) + 1
+		// e.g. (10 - 1) / 4 + 1 = 3 points
+		div4 := math.Round(float64(nGame.HoursToBeat-1) / 4.0)
+		nGame.Points = int(div4) + 1
+	}
+
 	if err := nGame.Valid(); err != nil {
 		return nil, huma.Error400BadRequest("game is not valid", err)
 	}

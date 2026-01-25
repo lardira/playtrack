@@ -8,7 +8,7 @@ import (
 
 const (
 	minGamePoints      = 1
-	minGameHoursToBeat = 2
+	minGameHoursToBeat = 1
 )
 
 var (
