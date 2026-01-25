@@ -60,7 +60,7 @@ func (h *Handler) GetOne(ctx context.Context, i *struct {
 
 func (h *Handler) Create(
 	ctx context.Context,
-	i *RequestCreate,
+	i *RequestCreateGame,
 ) (*domain.ResponseID[int], error) {
 	nGame := Game{
 		Points:      i.Body.Points,
