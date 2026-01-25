@@ -44,10 +44,11 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 	// TODO: use squirell for query building
 	gameRepository := game.NewPGRepository(dbpool)
 	playerRepository := player.NewPGRepository(dbpool)
+	playedGameRepository := player.NewPGPlayedRepository(dbpool)
 
 	techHandler := tech.NewHandler(dbpool)
 	gameHandler := game.NewHandler(gameRepository)
-	playerHandler := player.NewHandler(playerRepository, gameRepository)
+	playerHandler := player.NewHandler(playerRepository, gameRepository, playedGameRepository)
 
 	techHandler.Register(api)
 	gameHandler.Register(api)
