@@ -46,7 +46,7 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 
 	techHandler := tech.NewHandler(dbpool)
 	gameHandler := game.NewHandler(gameRepository)
-	playerHandler := player.NewHandler(playerRepository)
+	playerHandler := player.NewHandler(playerRepository, gameRepository)
 
 	techHandler.Register(api)
 	gameHandler.Register(api)

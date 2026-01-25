@@ -2,10 +2,17 @@ package player
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+var (
+	playerColumns     string = "id, username, img, email, password, created_at"
+	playedGameColumns string = `id, player_id, game_id, points, comment, 
+	rating, status, started_at, completed_at, play_time`
 )
 
 type PGRepository struct {
@@ -21,52 +28,30 @@ func NewPGRepository(pool *pgxpool.Pool) *PGRepository {
 func (r *PGRepository) FindAll(ctx context.Context) ([]Player, error) {
 	out := make([]Player, 0)
 
-	query := `SELECT 
-				id, username, img, email, password, created_at  
-			FROM player`
+	query := fmt.Sprintf(`SELECT %s FROM player`, playerColumns)
 	rows, err := r.pool.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
 
 	for rows.Next() {
-		var p Player
-		err := rows.Scan(
-			&p.ID,
-			&p.Username,
-			&p.Img,
-			&p.Email,
-			&p.Password,
-			&p.CreatedAt,
-		)
+		p, err := playerFromRow(rows)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, p)
+		out = append(out, *p)
 	}
 	return out, nil
 }
 
 func (r *PGRepository) FindOne(ctx context.Context, id string) (*Player, error) {
-	var p Player
-	query := `SELECT 
-				id, username, img, email, password, created_at  
-			FROM player
-			WHERE id=$1`
-
+	query := fmt.Sprintf(`SELECT %s FROM player WHERE id=$1`, playerColumns)
 	row := r.pool.QueryRow(ctx, query, id)
-	err := row.Scan(
-		&p.ID,
-		&p.Username,
-		&p.Img,
-		&p.Email,
-		&p.Password,
-		&p.CreatedAt,
-	)
+	p, err := playerFromRow(row)
 	if err != nil {
 		return nil, err
 	}
-	return &p, nil
+	return p, nil
 }
 
 func (r *PGRepository) Insert(ctx context.Context, player *Player) (string, error) {
@@ -90,4 +75,91 @@ func (r *PGRepository) Insert(ctx context.Context, player *Player) (string, erro
 		return id, err
 	}
 	return id, nil
+}
+
+func (r *PGRepository) FindAllPlayedGames(ctx context.Context, playerID string) ([]PlayedGame, error) {
+	out := make([]PlayedGame, 0)
+
+	query := fmt.Sprintf(`SELECT %s FROM played_game WHERE player_id=$1`, playedGameColumns)
+	rows, err := r.pool.Query(ctx, query, playerID)
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		p, err := playedGameFromRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *p)
+	}
+	return out, nil
+}
+
+func (r *PGRepository) FindOnePlayedGame(ctx context.Context, playerID string, id int) (*PlayedGame, error) {
+	query := fmt.Sprintf(`SELECT %s FROM played_game WHERE player_id=$1 AND id=$2`, playedGameColumns)
+	row := r.pool.QueryRow(ctx, query, playerID, id)
+	p, err := playedGameFromRow(row)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+func (r *PGRepository) InsertPlayedGame(ctx context.Context, game *PlayedGame) (int, error) {
+	var id int
+
+	query := `INSERT INTO played_game (player_id, game_id, status, points) 
+			VALUES (@player_id, @game_id, @status, @points)
+			RETURNING id`
+
+	args := pgx.NamedArgs{
+		"player_id": game.PlayerID,
+		"game_id":   game.GameID,
+		"status":    PlayedGameStatusAdded,
+		"points":    game.Points,
+	}
+
+	row := r.pool.QueryRow(ctx, query, args)
+	err := row.Scan(&id)
+	if err != nil {
+		return id, err
+	}
+	return id, nil
+}
+
+func playerFromRow(row pgx.Row) (*Player, error) {
+	var p Player
+	err := row.Scan(
+		&p.ID,
+		&p.Username,
+		&p.Img,
+		&p.Email,
+		&p.Password,
+		&p.CreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
+func playedGameFromRow(row pgx.Row) (*PlayedGame, error) {
+	var p PlayedGame
+	err := row.Scan(
+		&p.ID,
+		&p.PlayerID,
+		&p.GameID,
+		&p.Points,
+		&p.Comment,
+		&p.Rating,
+		&p.Status,
+		&p.StartedAt,
+		&p.CompletedAt,
+		&p.PlayTime,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
 }

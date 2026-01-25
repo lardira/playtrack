@@ -8,3 +8,10 @@ type RequestCreatePlayer struct {
 		Password string  `json:"password"`
 	}
 }
+
+type RequestCreatePlayedGame struct {
+	PlayerID string `path:"id" format:"uuid"`
+	Body     struct {
+		GameID int `json:"game_id"`
+	}
+}

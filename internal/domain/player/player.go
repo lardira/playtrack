@@ -2,6 +2,7 @@ package player
 
 import (
 	"fmt"
+	"slices"
 	"time"
 )
 
@@ -10,14 +11,22 @@ const (
 	minUsernameLength = 4
 )
 
-type GamePlayedStatus string
+type PlayedGameStatus string
 
 const (
-	GamePlayedStatusAdded      GamePlayedStatus = "added"
-	GamePlayedStatusInProgress GamePlayedStatus = "in_progress"
-	GamePlayedStatusCompleted  GamePlayedStatus = "completed"
-	GamePlayedStatusDropped    GamePlayedStatus = "dropped"
-	GamePlayedStatusRerolled   GamePlayedStatus = "rerolled"
+	PlayedGameStatusAdded      PlayedGameStatus = "added"
+	PlayedGameStatusInProgress PlayedGameStatus = "in_progress"
+	PlayedGameStatusCompleted  PlayedGameStatus = "completed"
+	PlayedGameStatusDropped    PlayedGameStatus = "dropped"
+	PlayedGameStatusRerolled   PlayedGameStatus = "rerolled"
+)
+
+var (
+	terminatedStatus = []PlayedGameStatus{
+		PlayedGameStatusCompleted,
+		PlayedGameStatusDropped,
+		PlayedGameStatusRerolled,
+	}
 )
 
 type Player struct {
@@ -42,16 +51,26 @@ func (p *Player) Valid() error {
 	return nil
 }
 
-type GamePlayed struct {
+type PlayedGame struct {
 	ID          int              `json:"id"`
-	GameID      int              `json:"game_id"`
-	Scores      int              `json:"scores"`
 	PlayerID    string           `json:"player_id"`
-	Status      GamePlayedStatus `json:"status"`
+	GameID      int              `json:"game_id"`
+	Points      int              `json:"points"`
 	Comment     *string          `json:"comment"`
 	Rating      *int             `json:"rating"`
+	Status      PlayedGameStatus `json:"status"`
 	StartedAt   time.Time        `json:"started_at"`
-	CompletedAt *time.Time       `json:"completed_at" required:"false"`
+	CompletedAt *time.Time       `json:"completed_at"`
+	PlayTime    *time.Duration   `json:"play_time"`
+}
+
+func (pg *PlayedGame) Valid() error {
+	// TODO: validation
+	return nil
+}
+
+func (pg *PlayedGame) StatusTerminated() bool {
+	return slices.Contains(terminatedStatus, pg.Status)
 }
 
 type LeaderboardPlayer struct {
