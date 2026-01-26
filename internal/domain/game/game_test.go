@@ -42,7 +42,7 @@ func TestValidGame(t *testing.T) {
 				URL:         &invalidURL,
 				Points:      minGamePoints,
 			},
-			ErrInvalidGamesiteURL,
+			ErrInvalidGameSiteURL,
 		},
 		{
 			"invalid points",
