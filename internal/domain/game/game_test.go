@@ -66,42 +66,24 @@ func TestValidGame(t *testing.T) {
 
 func TestGameCalculatePoints(t *testing.T) {
 	tcases := []struct {
-		name string
-		game Game
-		want int
+		name  string
+		hours int
+		want  int
 	}{
-		{
-			"min game hours points",
-			Game{HoursToBeat: minGameHoursToBeat},
-			1,
-		},
-		{
-			"2 hours 1 point",
-			Game{HoursToBeat: 2},
-			1,
-		},
-		{
-			"9 hours 3 points",
-			Game{HoursToBeat: 9},
-			3,
-		},
-		{
-			"10 hours 3 points",
-			Game{HoursToBeat: 10},
-			3,
-		},
-		{
-			"11 hours 4 points",
-			Game{HoursToBeat: 11},
-			4,
-		},
+		{"min game hours points", minGameHoursToBeat, 1},
+		{"2 hours 1 point", 2, 1},
+		{"9 hours 3 points", 9, 3},
+		{"10 hours 3 points", 10, 3},
+		{"11 hours 4 points", 11, 4},
 	}
 
 	for _, tt := range tcases {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.game.CalculatePoints()
+			game := Game{HoursToBeat: tt.hours}
 
-			assert.Equal(t, tt.want, tt.game.Points)
+			game.CalculatePoints()
+
+			assert.Equal(t, tt.want, game.Points)
 		})
 	}
 }
