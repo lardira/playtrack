@@ -14,7 +14,7 @@ const (
 var (
 	ErrMinPoints          = fmt.Errorf("game must not have less than %d points", minGamePoints)
 	ErrMinHoursToBeat     = fmt.Errorf("game must not have less than %d hours to beat", minGameHoursToBeat)
-	ErrInvalidGamesiteURL = fmt.Errorf("invalid url")
+	ErrInvalidGameSiteURL = fmt.Errorf("invalid url")
 )
 
 type Game struct {
@@ -35,7 +35,7 @@ func (g *Game) Valid() error {
 	}
 	if g.URL != nil {
 		if _, err := url.ParseRequestURI(*g.URL); err != nil {
-			return ErrInvalidGamesiteURL
+			return ErrInvalidGameSiteURL
 		}
 	}
 
