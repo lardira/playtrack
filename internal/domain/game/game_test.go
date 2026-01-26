@@ -52,3 +52,41 @@ func TestValidErr(t *testing.T) {
 		})
 	}
 }
+
+func TestGameCalculatePoints(t *testing.T) {
+	tcases := map[string]struct {
+		game Game
+		want int
+	}{
+		"min game hours points": {
+			Game{HoursToBeat: minGameHoursToBeat},
+			1,
+		},
+		"2 hours 1 point": {
+			Game{HoursToBeat: 2},
+			1,
+		},
+		"9 hours 3 points": {
+			Game{HoursToBeat: 9},
+			3,
+		},
+		"10 hours 3 points": {
+			Game{HoursToBeat: 10},
+			3,
+		},
+		"11 hours 4 points": {
+			Game{HoursToBeat: 11},
+			4,
+		},
+	}
+
+	for name, tcase := range tcases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			tcase.game.CalculatePoints()
+
+			assert.Equal(t, tcase.want, tcase.game.Points)
+		})
+	}
+}
