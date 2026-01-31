@@ -42,7 +42,9 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 		Addr:    fmt.Sprintf("%s:%s", opts.Host, opts.Port),
 		Handler: mux,
 	}
-	api := humago.New(mux, huma.DefaultConfig("playtrack API", "1.0.0"))
+
+	config := huma.DefaultConfig("playtrack API", "1.0.0")
+	api := humago.New(mux, config)
 	apiV1 := huma.NewGroup(api, "/v1")
 	unsecApi := huma.NewGroup(api, "/pub")
 

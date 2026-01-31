@@ -9,6 +9,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/lardira/playtrack/internal/domain"
 	"github.com/lardira/playtrack/internal/domain/game"
+	"github.com/lardira/playtrack/internal/pkg/ctxutil"
 )
 
 type PlayerRepository interface {
@@ -92,6 +93,10 @@ func (h *Handler) Update(
 	ctx context.Context,
 	i *RequestUpdatePlayer,
 ) (*domain.ResponseID[string], error) {
+	if ok := checkAuthorizedFor(ctx, i.PlayerID); !ok {
+		return nil, huma.Error403Forbidden("player cannot access this entity")
+	}
+
 	nPlayer := PlayerUpdate{
 		ID:       i.PlayerID,
 		Username: i.Body.Username,
@@ -126,10 +131,10 @@ func (h *Handler) GetAllPlayedGames(ctx context.Context, i *struct {
 }
 
 func (h *Handler) GetOnePlayedGame(ctx context.Context, i *struct {
-	ID     string `path:"id" format:"uuid"`
-	GameID int    `path:"gameID"`
+	PlayerID string `path:"id" format:"uuid"`
+	GameID   int    `path:"gameID"`
 }) (*domain.ResponseItem[PlayedGame], error) {
-	game, err := h.playedGameRepository.FindOne(ctx, i.ID, i.GameID)
+	game, err := h.playedGameRepository.FindOne(ctx, i.PlayerID, i.GameID)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("find", err)
 	}
@@ -143,6 +148,10 @@ func (h *Handler) CreatePlayedGame(
 	ctx context.Context,
 	i *RequestCreatePlayedGame,
 ) (*domain.ResponseID[int], error) {
+	if ok := checkAuthorizedFor(ctx, i.PlayerID); !ok {
+		return nil, huma.Error403Forbidden("player cannot access this entity")
+	}
+
 	game, err := h.gameRepository.FindOne(ctx, i.Body.GameID)
 	if err != nil {
 		return nil, huma.Error400BadRequest("game find", err)
@@ -176,6 +185,10 @@ func (h *Handler) UpdatePlayedGame(
 	ctx context.Context,
 	i *RequestUpdatePlayedGame,
 ) (*domain.ResponseID[string], error) {
+	if ok := checkAuthorizedFor(ctx, i.PlayerID); !ok {
+		return nil, huma.Error403Forbidden("player cannot access this entity")
+	}
+
 	nGame := PlayedGameUpdate{
 		ID:          i.GameID,
 		Points:      i.Body.Points,
@@ -248,4 +261,15 @@ func (h *Handler) containsNonterminatedPlayed(ctx context.Context, playerID stri
 		}
 	}
 	return nil
+}
+
+func checkAuthorizedFor(ctx context.Context, playerID string) bool {
+	ctxPlayerID, ok := ctxutil.GetPlayerID(ctx)
+	if !ok {
+		return false
+	}
+	if ctxPlayerID != playerID {
+		return false
+	}
+	return true
 }
