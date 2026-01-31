@@ -15,6 +15,7 @@ import (
 	"github.com/lardira/playtrack/internal/domain/player"
 	"github.com/lardira/playtrack/internal/middleware"
 	"github.com/lardira/playtrack/internal/tech"
+	"github.com/rs/cors"
 )
 
 type Options struct {
@@ -51,6 +52,13 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 	apiV1.UseMiddleware(
 		middleware.Authorize(opts.JWTSecret),
 	)
+
+	cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"*"},
+		AllowCredentials: true,
+	}).Handler(mux)
 
 	// TODO: use squirell for query building
 	gameRepository := game.NewPGRepository(dbpool)
