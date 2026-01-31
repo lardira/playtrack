@@ -23,7 +23,6 @@ type humaContext huma.Context
 
 type authContext struct {
 	humaContext
-
 	playerID string
 }
 
