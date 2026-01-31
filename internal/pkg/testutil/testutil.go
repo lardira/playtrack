@@ -16,6 +16,10 @@ var (
 )
 
 func init() {
+	initFaker()
+}
+
+func initFaker() {
 	fakerOnce.Do(func() {
 		seed = rand.Uint64()
 		faker = gofakeit.NewFaker(source.NewJSF(seed), true)

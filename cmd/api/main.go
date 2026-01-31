@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -32,7 +33,7 @@ func main() {
 	}
 	server, err := server.New(ctx, opts)
 	if err != nil {
-		log.Fatalf("error on setting up: %v", err)
+		panic(fmt.Errorf("could not set up server: %v", err))
 	}
 	defer server.Shutdown(ctx)
 
