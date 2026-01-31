@@ -1,47 +1,53 @@
-export type Player = {
+export interface Player {
     ID: string;
     Username: string;
     Description: string;
+    Score: number;
     Img: string;
     Email?: string;
-    Password?: string;
-};
+    Color: string; // HEX
+}
 
-
-export type LeaderboardRow = {
+export interface LeaderboardRow {
     Player_id: string;
     total: number;
-    comleted: number;
+    completed: number;
     drop: number;
     reroll: number;
-    current_game?: string; // Название текущей игры
-};
+}
 
-
-export type Game = {
+export interface Game {
     ID: string;
-    Points: number;
+    Score: number;
     HoursToBeat: number;
+    Playtime: number;
     Title: string;
     URL: string;
     CreatedAt: string;
-};
+    Genre: string;
+    LastPlayed: string;
+    Status: GameStatus;
+}
 
-
-export type GamePlayed = {
+export interface GamePlayed {
     Player_id: string;
     game_id: string;
-    status: string;
+    status: 'В процессе' | 'Пройдено' | 'Дроп' | 'Реролл';
     scores: number;
     start_date: string;
-    end_date: string | null;
+    end_date?: string | null;
     comment: string;
     rating: string;
-    time_played?: string; // Время в игре
-};
+    time_played?: string;
+}
 
-
-export type AuthResponse = {
+export interface AuthResponse {
     token?: string;
     player?: Player;
-};
+}
+
+export type GameStatus =
+    | "completed"
+    | "dropped"
+    | "reroll"
+    | "in_progress";
