@@ -60,13 +60,6 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 		middleware.Authorize(opts.JWTSecret),
 	)
 
-	cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"*"},
-		AllowCredentials: true,
-	}).Handler(mux)
-
 	// TODO: use squirell for query building
 	gameRepository := game.NewPGRepository(dbpool)
 	playerRepository := player.NewPGRepository(dbpool)
