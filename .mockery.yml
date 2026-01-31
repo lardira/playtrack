@@ -1,6 +1,6 @@
 all: false
-dir: '{{.InterfaceDir}}/mock'
-filename: mocks.go
+dir: '{{.InterfaceDir}}'
+filename: mock_test.go
 force-file-write: true
 formatter: goimports
 generate: true
@@ -35,10 +35,3 @@ packages:
     interfaces:
       PlayerRepository: 
         config: {}
-  github.com/lardira/playtrack/internal/domain:
-    config:
-      all: false
-    interfaces:
-      TestHumaContext: 
-        config: {}
-        

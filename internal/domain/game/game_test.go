@@ -4,14 +4,13 @@ import (
 	"testing"
 
 	"github.com/alecthomas/assert/v2"
-)
-
-var (
-	validURL   = "http://example.test.test"
-	invalidURL = "example.cra"
+	"github.com/lardira/playtrack/internal/pkg/testutil"
 )
 
 func TestValidGame(t *testing.T) {
+	url := testutil.Faker().URL()
+	invalidURL := "example.cra"
+
 	tcases := []struct {
 		name string
 		game Game
@@ -21,7 +20,7 @@ func TestValidGame(t *testing.T) {
 			"valid game",
 			Game{
 				HoursToBeat: minGameHoursToBeat,
-				URL:         &validURL,
+				URL:         &url,
 				Points:      minGamePoints,
 			},
 			nil,
@@ -30,7 +29,7 @@ func TestValidGame(t *testing.T) {
 			"invalid hours to beat",
 			Game{
 				HoursToBeat: minGameHoursToBeat - 1,
-				URL:         &validURL,
+				URL:         &url,
 				Points:      minGamePoints,
 			},
 			ErrMinHoursToBeat,
@@ -48,7 +47,7 @@ func TestValidGame(t *testing.T) {
 			"invalid points",
 			Game{
 				HoursToBeat: minGameHoursToBeat,
-				URL:         &validURL,
+				URL:         &url,
 				Points:      minGamePoints - 1,
 			},
 			ErrMinPoints,

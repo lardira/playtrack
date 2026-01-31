@@ -7,7 +7,6 @@ import (
 	"github.com/alecthomas/assert/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	auth "github.com/lardira/playtrack/internal/domain/auth/mock"
 	"github.com/lardira/playtrack/internal/domain/player"
 	"github.com/lardira/playtrack/internal/pkg/ctxutil"
 	"github.com/lardira/playtrack/internal/pkg/password"
@@ -20,7 +19,7 @@ const (
 )
 
 func TestNewHandler(t *testing.T) {
-	got := NewHandler(testSecret, auth.NewMockPlayerRepository(t))
+	got := NewHandler(testSecret, NewMockPlayerRepository(t))
 	assert.NotEqual(t, nil, got)
 
 	assert.Equal(t, testSecret, got.secret)
@@ -28,7 +27,7 @@ func TestNewHandler(t *testing.T) {
 }
 
 func TestLogin(t *testing.T) {
-	playerRepository := auth.NewMockPlayerRepository(t)
+	playerRepository := NewMockPlayerRepository(t)
 	handler := NewHandler(testSecret, playerRepository)
 
 	playerUsername := "test"
@@ -75,7 +74,7 @@ func TestLogin(t *testing.T) {
 }
 
 func TestRegister(t *testing.T) {
-	playerRepository := auth.NewMockPlayerRepository(t)
+	playerRepository := NewMockPlayerRepository(t)
 	handler := NewHandler(testSecret, playerRepository)
 
 	newID := uuid.NewString()
@@ -109,7 +108,7 @@ func TestRegister(t *testing.T) {
 }
 
 func TestSetPassword(t *testing.T) {
-	playerRepository := auth.NewMockPlayerRepository(t)
+	playerRepository := NewMockPlayerRepository(t)
 	handler := NewHandler(testSecret, playerRepository)
 
 	newID := uuid.NewString()
@@ -142,7 +141,7 @@ func TestSetPassword(t *testing.T) {
 }
 
 func TestIssueToken(t *testing.T) {
-	handler := NewHandler(testSecret, auth.NewMockPlayerRepository(t))
+	handler := NewHandler(testSecret, NewMockPlayerRepository(t))
 	playerID := uuid.NewString()
 
 	token, err := handler.issueToken(playerID)
