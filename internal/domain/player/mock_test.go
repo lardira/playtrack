@@ -604,22 +604,22 @@ func (_c *MockPlayedGameRepository_Insert_Call) RunAndReturn(run func(ctx contex
 }
 
 // Update provides a mock function for the type MockPlayedGameRepository
-func (_mock *MockPlayedGameRepository) Update(ctx context.Context, game *PlayedGameUpdate) (string, error) {
+func (_mock *MockPlayedGameRepository) Update(ctx context.Context, game *PlayedGameUpdate) (int, error) {
 	ret := _mock.Called(ctx, game)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Update")
 	}
 
-	var r0 string
+	var r0 int
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *PlayedGameUpdate) (string, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *PlayedGameUpdate) (int, error)); ok {
 		return returnFunc(ctx, game)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *PlayedGameUpdate) string); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *PlayedGameUpdate) int); ok {
 		r0 = returnFunc(ctx, game)
 	} else {
-		r0 = ret.Get(0).(string)
+		r0 = ret.Get(0).(int)
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, *PlayedGameUpdate) error); ok {
 		r1 = returnFunc(ctx, game)
@@ -659,12 +659,12 @@ func (_c *MockPlayedGameRepository_Update_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockPlayedGameRepository_Update_Call) Return(s string, err error) *MockPlayedGameRepository_Update_Call {
-	_c.Call.Return(s, err)
+func (_c *MockPlayedGameRepository_Update_Call) Return(n int, err error) *MockPlayedGameRepository_Update_Call {
+	_c.Call.Return(n, err)
 	return _c
 }
 
-func (_c *MockPlayedGameRepository_Update_Call) RunAndReturn(run func(ctx context.Context, game *PlayedGameUpdate) (string, error)) *MockPlayedGameRepository_Update_Call {
+func (_c *MockPlayedGameRepository_Update_Call) RunAndReturn(run func(ctx context.Context, game *PlayedGameUpdate) (int, error)) *MockPlayedGameRepository_Update_Call {
 	_c.Call.Return(run)
 	return _c
 }
