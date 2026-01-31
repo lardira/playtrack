@@ -24,7 +24,7 @@ type PlayedGameRepository interface {
 	FindOne(ctx context.Context, playerID string, id int) (*PlayedGame, error)
 	FindLast(ctx context.Context, playerID string) (*PlayedGame, error)
 	Insert(ctx context.Context, player *PlayedGame) (int, error)
-	Update(ctx context.Context, game *PlayedGameUpdate) (string, error)
+	Update(ctx context.Context, game *PlayedGameUpdate) (int, error)
 }
 
 type GameRepository interface {
@@ -184,7 +184,7 @@ func (h *Handler) CreatePlayedGame(
 func (h *Handler) UpdatePlayedGame(
 	ctx context.Context,
 	i *RequestUpdatePlayedGame,
-) (*domain.ResponseID[string], error) {
+) (*domain.ResponseID[int], error) {
 	if ok := checkAuthorizedFor(ctx, i.PlayerID); !ok {
 		return nil, huma.Error403Forbidden("player cannot access this entity")
 	}
@@ -243,7 +243,7 @@ func (h *Handler) UpdatePlayedGame(
 		return nil, huma.Error500InternalServerError("update", err)
 	}
 
-	resp := domain.ResponseID[string]{}
+	resp := domain.ResponseID[int]{}
 	resp.Body.ID = id
 	return &resp, nil
 }

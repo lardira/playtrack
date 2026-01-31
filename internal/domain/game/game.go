@@ -7,13 +7,13 @@ import (
 )
 
 const (
-	minGamePoints      = 1
-	minGameHoursToBeat = 1
+	MinGamePoints      = 1
+	MinGameHoursToBeat = 1
 )
 
 var (
-	ErrMinPoints          = fmt.Errorf("game must not have less than %d points", minGamePoints)
-	ErrMinHoursToBeat     = fmt.Errorf("game must not have less than %d hours to beat", minGameHoursToBeat)
+	ErrMinPoints          = fmt.Errorf("game must not have less than %d points", MinGamePoints)
+	ErrMinHoursToBeat     = fmt.Errorf("game must not have less than %d hours to beat", MinGameHoursToBeat)
 	ErrInvalidGameSiteURL = fmt.Errorf("invalid url")
 )
 
@@ -27,10 +27,10 @@ type Game struct {
 }
 
 func (g *Game) Valid() error {
-	if g.HoursToBeat < minGameHoursToBeat {
+	if g.HoursToBeat < MinGameHoursToBeat {
 		return ErrMinHoursToBeat
 	}
-	if g.Points < minGamePoints {
+	if g.Points < MinGamePoints {
 		return ErrMinPoints
 	}
 	if g.URL != nil {

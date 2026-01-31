@@ -91,8 +91,8 @@ func (r *PGPlayedRepository) Insert(ctx context.Context, game *PlayedGame) (int,
 	return id, nil
 }
 
-func (r *PGPlayedRepository) Update(ctx context.Context, game *PlayedGameUpdate) (string, error) {
-	var id string
+func (r *PGPlayedRepository) Update(ctx context.Context, game *PlayedGameUpdate) (int, error) {
+	var id int
 	updBuild := sq.Update("played_game").PlaceholderFormat(sq.Dollar)
 
 	if game.Points != nil {
