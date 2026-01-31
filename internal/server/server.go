@@ -10,8 +10,10 @@ import (
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lardira/playtrack/internal/db"
+	"github.com/lardira/playtrack/internal/domain/auth"
 	"github.com/lardira/playtrack/internal/domain/game"
 	"github.com/lardira/playtrack/internal/domain/player"
+	"github.com/lardira/playtrack/internal/middleware"
 	"github.com/lardira/playtrack/internal/tech"
 )
 
@@ -19,6 +21,7 @@ type Options struct {
 	Host        string
 	Port        string
 	DatabaseURL string
+	JWTSecret   string
 }
 
 type Server struct {
@@ -39,7 +42,15 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 		Addr:    fmt.Sprintf("%s:%s", opts.Host, opts.Port),
 		Handler: mux,
 	}
-	api := humago.New(mux, huma.DefaultConfig("playtrack API", "1.0.0"))
+
+	config := huma.DefaultConfig("playtrack API", "1.0.0")
+	api := humago.New(mux, config)
+	apiV1 := huma.NewGroup(api, "/v1")
+	unsecApi := huma.NewGroup(api, "/pub")
+
+	apiV1.UseMiddleware(
+		middleware.Authorize(opts.JWTSecret),
+	)
 
 	// TODO: use squirell for query building
 	gameRepository := game.NewPGRepository(dbpool)
@@ -49,10 +60,12 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 	techHandler := tech.NewHandler(dbpool)
 	gameHandler := game.NewHandler(gameRepository)
 	playerHandler := player.NewHandler(playerRepository, gameRepository, playedGameRepository)
+	authHandler := auth.NewHandler(opts.JWTSecret, playerRepository)
 
-	techHandler.Register(api)
-	gameHandler.Register(api)
-	playerHandler.Register(api)
+	techHandler.Register(apiV1)
+	gameHandler.Register(apiV1)
+	playerHandler.Register(apiV1)
+	authHandler.Register(unsecApi)
 
 	return &Server{
 		Options: opts,
