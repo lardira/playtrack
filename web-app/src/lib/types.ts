@@ -1,44 +1,39 @@
 export interface Player {
-    ID: string;
-    Username: string;
-    Description: string;
-    Score: number;
-    Img: string;
-    Email?: string;
-    Color: string; // HEX
+    id: string; // UUID
+    username: string;
+    img: string | null;
+    email: string | null;
+    created_at: string; // ISO date string
 }
 
-export interface LeaderboardRow {
-    Player_id: string;
-    total: number;
+export interface LeaderboardPlayer {
+    player_id: string;
     completed: number;
-    drop: number;
-    reroll: number;
+    total: number;
+    dropped: number;
+    rerolled: number;
 }
 
 export interface Game {
-    ID: string;
-    Score: number;
-    HoursToBeat: number;
-    Playtime: number;
-    Title: string;
-    URL: string;
-    CreatedAt: string;
-    Genre: string;
-    LastPlayed: string;
-    Status: GameStatus;
+    id: number;
+    points: number;
+    hours_to_beat: number;
+    title: string;
+    url: string | null;
+    created_at: string; // ISO date string
 }
 
-export interface GamePlayed {
-    Player_id: string;
-    game_id: string;
-    status: 'В процессе' | 'Пройдено' | 'Дроп' | 'Реролл';
-    scores: number;
-    start_date: string;
-    end_date?: string | null;
-    comment: string;
-    rating: string;
-    time_played?: string;
+export interface PlayedGame {
+    id: number;
+    player_id: string;
+    game_id: number;
+    points: number;
+    comment: string | null;
+    rating: number | null;
+    status: PlayedGameStatus;
+    started_at: string; // ISO date string
+    completed_at: string | null; // ISO date string
+    play_time: string | null; // ISO duration string
 }
 
 export interface AuthResponse {
@@ -46,8 +41,9 @@ export interface AuthResponse {
     player?: Player;
 }
 
-export type GameStatus =
+export type PlayedGameStatus =
+    | "added"
+    | "in_progress"
     | "completed"
     | "dropped"
-    | "reroll"
-    | "in_progress";
+    | "rerolled";
