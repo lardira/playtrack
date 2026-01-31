@@ -16,7 +16,7 @@ require (
 )
 
 require (
-	github.com/alecthomas/repr v0.4.0 // indirect
+	github.com/alecthomas/repr v0.5.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/hexops/gotextdiff v1.0.3 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -27,7 +27,7 @@ require (
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
-	github.com/stretchr/objx v0.5.2 // indirect
+	github.com/stretchr/objx v0.5.3 // indirect
 	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
