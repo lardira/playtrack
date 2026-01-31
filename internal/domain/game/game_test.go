@@ -11,12 +11,23 @@ var (
 	invalidURL = "example.cra"
 )
 
-func TestValidErr(t *testing.T) {
-	tcases := map[string]struct {
+func TestValidGame(t *testing.T) {
+	tcases := []struct {
+		name string
 		game Game
 		want error
 	}{
-		"invalid hours to beat": {
+		{
+			"valid game",
+			Game{
+				HoursToBeat: minGameHoursToBeat,
+				URL:         &validURL,
+				Points:      minGamePoints,
+			},
+			nil,
+		},
+		{
+			"invalid hours to beat",
 			Game{
 				HoursToBeat: minGameHoursToBeat - 1,
 				URL:         &validURL,
@@ -24,15 +35,17 @@ func TestValidErr(t *testing.T) {
 			},
 			ErrMinHoursToBeat,
 		},
-		"invalid url": {
+		{
+			"invalid url",
 			Game{
 				HoursToBeat: minGameHoursToBeat,
 				URL:         &invalidURL,
 				Points:      minGamePoints,
 			},
-			ErrInvalidGamesiteURL,
+			ErrInvalidGameSiteURL,
 		},
-		"invalid points": {
+		{
+			"invalid points",
 			Game{
 				HoursToBeat: minGameHoursToBeat,
 				URL:         &validURL,
@@ -42,13 +55,35 @@ func TestValidErr(t *testing.T) {
 		},
 	}
 
-	for name, tcase := range tcases {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
+	for _, tt := range tcases {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.game.Valid()
 
-			err := tcase.game.Valid()
+			assert.IsError(t, err, tt.want)
+		})
+	}
+}
 
-			assert.IsError(t, err, tcase.want)
+func TestGameCalculatePoints(t *testing.T) {
+	tcases := []struct {
+		name  string
+		hours int
+		want  int
+	}{
+		{"min game hours points", minGameHoursToBeat, 1},
+		{"2 hours 1 point", 2, 1},
+		{"9 hours 3 points", 9, 3},
+		{"10 hours 3 points", 10, 3},
+		{"11 hours 4 points", 11, 4},
+	}
+
+	for _, tt := range tcases {
+		t.Run(tt.name, func(t *testing.T) {
+			game := Game{HoursToBeat: tt.hours}
+
+			game.CalculatePoints()
+
+			assert.Equal(t, tt.want, game.Points)
 		})
 	}
 }

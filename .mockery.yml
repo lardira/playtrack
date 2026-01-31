@@ -1,0 +1,44 @@
+all: false
+dir: '{{.InterfaceDir}}/mock'
+filename: mocks.go
+force-file-write: true
+formatter: goimports
+generate: true
+include-auto-generated: false
+log-level: info
+structname: '{{.Mock}}{{.InterfaceName}}'
+pkgname: '{{.SrcPackageName}}'
+recursive: false
+require-template-schema-exists: true
+template: testify
+template-schema: '{{.Template}}.schema.json'
+packages:
+  github.com/lardira/playtrack/internal/domain/player:
+    config:
+      all: false
+    interfaces:
+      PlayerRepository: 
+        config: {}
+      PlayedGameRepository: 
+        config: {}
+      GameRepository: 
+        config: {}
+  github.com/lardira/playtrack/internal/domain/game:
+    config:
+      all: false
+    interfaces:
+      GameRepository: 
+        config: {}
+  github.com/lardira/playtrack/internal/domain/auth:
+    config:
+      all: false
+    interfaces:
+      PlayerRepository: 
+        config: {}
+  github.com/lardira/playtrack/internal/domain:
+    config:
+      all: false
+    interfaces:
+      TestHumaContext: 
+        config: {}
+        
