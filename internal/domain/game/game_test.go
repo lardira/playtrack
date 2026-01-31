@@ -19,36 +19,36 @@ func TestValidGame(t *testing.T) {
 		{
 			"valid game",
 			Game{
-				HoursToBeat: minGameHoursToBeat,
+				HoursToBeat: MinGameHoursToBeat,
 				URL:         &url,
-				Points:      minGamePoints,
+				Points:      MinGamePoints,
 			},
 			nil,
 		},
 		{
 			"invalid hours to beat",
 			Game{
-				HoursToBeat: minGameHoursToBeat - 1,
+				HoursToBeat: MinGameHoursToBeat - 1,
 				URL:         &url,
-				Points:      minGamePoints,
+				Points:      MinGamePoints,
 			},
 			ErrMinHoursToBeat,
 		},
 		{
 			"invalid url",
 			Game{
-				HoursToBeat: minGameHoursToBeat,
+				HoursToBeat: MinGameHoursToBeat,
 				URL:         &invalidURL,
-				Points:      minGamePoints,
+				Points:      MinGamePoints,
 			},
 			ErrInvalidGameSiteURL,
 		},
 		{
 			"invalid points",
 			Game{
-				HoursToBeat: minGameHoursToBeat,
+				HoursToBeat: MinGameHoursToBeat,
 				URL:         &url,
-				Points:      minGamePoints - 1,
+				Points:      MinGamePoints - 1,
 			},
 			ErrMinPoints,
 		},
@@ -69,7 +69,7 @@ func TestGameCalculatePoints(t *testing.T) {
 		hours int
 		want  int
 	}{
-		{"min game hours points", minGameHoursToBeat, 1},
+		{"min game hours points", MinGameHoursToBeat, 1},
 		{"2 hours 1 point", 2, 1},
 		{"9 hours 3 points", 9, 3},
 		{"10 hours 3 points", 10, 3},

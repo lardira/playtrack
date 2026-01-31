@@ -27,8 +27,10 @@ const (
 )
 
 var (
-	ErrUsernameMinLen = fmt.Errorf("username must not be less than %d symbols", MinUsernameLength)
-	ErrPasswordMinLen = fmt.Errorf("password must not be less than %d symbols", MinPasswordLength)
+	ErrUsernameMinLen         = fmt.Errorf("username must not be less than %d symbols", MinUsernameLength)
+	ErrPasswordMinLen         = fmt.Errorf("password must not be less than %d symbols", MinPasswordLength)
+	ErrCompletedBeforeStarted = fmt.Errorf("completed time is before started")
+	ErrGameRating             = fmt.Errorf("rating must be in range [%v; %v]", minRating, maxRating)
 )
 
 var (
@@ -98,7 +100,12 @@ type PlayedGame struct {
 }
 
 func (pg *PlayedGame) Valid() error {
-	// TODO: validation
+	if pg.CompletedAt != nil && !pg.StartedAt.Before(*pg.CompletedAt) {
+		return ErrCompletedBeforeStarted
+	}
+	if pg.Rating != nil && (*pg.Rating < minRating || *pg.Rating > maxRating) {
+		return ErrGameRating
+	}
 	return nil
 }
 
@@ -126,7 +133,7 @@ type PlayedGameUpdate struct {
 
 func (p *PlayedGameUpdate) Valid() error {
 	if p.Rating != nil && (*p.Rating < minRating || *p.Rating > maxRating) {
-		return fmt.Errorf("rating must be in range [%v; %v]", minRating, maxRating)
+		return ErrGameRating
 	}
 	return nil
 }
