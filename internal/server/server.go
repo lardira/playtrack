@@ -39,9 +39,16 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 	}
 
 	mux := http.NewServeMux()
+	servMux := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"*"},
+		AllowCredentials: true,
+	}).Handler(mux)
+
 	server := http.Server{
 		Addr:    fmt.Sprintf("%s:%s", opts.Host, opts.Port),
-		Handler: mux,
+		Handler: servMux,
 	}
 
 	config := huma.DefaultConfig("playtrack API", "1.0.0")
@@ -52,13 +59,6 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 	apiV1.UseMiddleware(
 		middleware.Authorize(opts.JWTSecret),
 	)
-
-	cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"*"},
-		AllowCredentials: true,
-	}).Handler(mux)
 
 	// TODO: use squirell for query building
 	gameRepository := game.NewPGRepository(dbpool)
