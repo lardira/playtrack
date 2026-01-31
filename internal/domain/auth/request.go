@@ -11,7 +11,6 @@ type RequestRegisterCreatePlayer struct {
 
 type RequestSetPassword struct {
 	Body struct {
-		Username string `json:"username"`
 		Password string `json:"password"`
 	}
 }

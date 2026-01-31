@@ -51,7 +51,7 @@ func (h *Handler) Register(api huma.API) {
 
 	huma.Post(grp, "/register", h.RegisterPlayer)
 	huma.Post(grp, "/login", h.Login)
-	huma.Patch(secgrp, "set-password", h.SetPassword)
+	huma.Patch(secgrp, "/set-password", h.SetPassword)
 }
 
 func (h *Handler) Login(ctx context.Context, i *RequestLoginPlayer) (*ResponseLoginPlayer, error) {
