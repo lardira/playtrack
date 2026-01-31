@@ -92,7 +92,7 @@ func TestAuthMiddleware_InvalidHeader(t *testing.T) {
 		},
 		{
 			"bearer invalid token",
-			func() string { return authPrefix + testutil.Faker().Word() },
+			func() string { return testutil.Faker().Regex("a{10}\\.b{10}\\.c{10}") },
 			http.StatusUnauthorized,
 		},
 	}
