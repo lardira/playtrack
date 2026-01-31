@@ -2,6 +2,7 @@
 	import { onMount } from "svelte";
 	import { user } from "../stores/user";
 	import type { Player } from "../lib/types";
+	import { playersMock } from "../lib/mocks";
 
 	let currentUser: Player | null = null;
 
@@ -26,38 +27,28 @@
 		},
 	];
 
-	let leaderboard: Player[] = [
-		{
-			ID: "1",
-			Username: "Alice",
-			Score: 1840,
-			Color: "#f97316",
-			Description: "Speedrunner",
-		},
-		{
-			ID: "2",
-			Username: "Bob",
-			Score: 1520,
-			Color: "#22c55e",
-			Description: "Achievement hunter",
-		},
-		{
-			ID: "3",
-			Username: "Charlie",
-			Score: 1390,
-			Color: "#3b82f6",
-			Description: "PvP monster",
-		},
-		{
-			ID: "4",
-			Username: "Diana",
-			Score: 980,
-			Color: "#a855f7",
-			Description: "Casual grinder",
-		},
-	];
+	let leaderboard: Player[] = playersMock;
 
-	$: sorted = [...leaderboard].sort((a, b) => b.Score - a.Score);
+	// Генерируем цвет на основе username для UI
+	function getPlayerColor(username: string): string {
+		const colors = [
+			"#f97316",
+			"#22c55e",
+			"#3b82f6",
+			"#a855f7",
+			"#ec4899",
+			"#14b8a6",
+		];
+		const hash = username
+			.split("")
+			.reduce((acc, char) => acc + char.charCodeAt(0), 0);
+		return colors[hash % colors.length];
+	}
+
+	// Для сортировки используем username, так как Score больше нет в модели
+	$: sorted = [...leaderboard].sort((a, b) =>
+		a.username.localeCompare(b.username),
+	);
 
 	onMount(() => {
 		user.subscribe((value) => (currentUser = value));
@@ -78,7 +69,7 @@
 	<!-- <div class="mt-6 flex justify-center gap-3">
 		{#if currentUser}
 			<a
-				href={`/users/${currentUser.ID}`}
+				href={`/users/${currentUser.id}`}
 				class="btn variant-filled-primary">Go to my profile</a
 			>
 		{:else}
@@ -102,7 +93,7 @@
 	<div class="grid gap-6 md:grid-cols-3">
 		{#each sorted.slice(0, 3) as player, index}
 			<a
-				href={`/users/${player.ID}`}
+				href={`/users/${player.id}`}
 				class="relative rounded-2xl p-6 bg-surface shadow-lg transition hover:scale-[1.03]"
 				style={`
 					border-top: 6px solid ${placeStyles[index].bg};
@@ -123,20 +114,21 @@
 				<!-- CONTENT -->
 				<p
 					class="text-xl font-extrabold mb-1"
-					style={`color:${player.Color}`}
+					style={`color:${getPlayerColor(player.username)}`}
 				>
-					{player.Username}
+					{player.username}
 				</p>
 
-				<p class="text-sm text-surface-400 mb-4">
-					{player.Description}
-				</p>
+				{#if player.email}
+					<p class="text-sm text-surface-400 mb-4">
+						{player.email}
+					</p>
+				{/if}
 
-				<div class="text-3xl font-bold">
-					{player.Score}
-					<span class="text-sm font-normal text-surface-400">
-						points
-					</span>
+				<div class="text-sm text-surface-400">
+					Зарегистрирован: {new Date(
+						player.created_at,
+					).toLocaleDateString()}
 				</div>
 			</a>
 		{/each}
@@ -150,9 +142,9 @@
 	<div class="space-y-3">
 		{#each sorted as player, index}
 			<a
-				href={`/users/${player.ID}`}
+				href={`/users/${player.id}`}
 				class="group block rounded-xl p-4 bg-surface shadow-md transition hover:shadow-xl"
-				style={`border-left: 6px solid ${player.Color}`}
+				style={`border-left: 6px solid ${getPlayerColor(player.username)}`}
 			>
 				<div class="flex items-center gap-4">
 					<!-- PLACE -->
@@ -160,7 +152,7 @@
 						class="w-10 h-10 flex items-center justify-center rounded-full text-lg font-bold"
 						style={`
 						background: ${placeStyles[index]?.bg ?? "transparent"};
-						color: ${placeStyles[index]?.color ?? player.Color};
+						color: ${placeStyles[index]?.color ?? getPlayerColor(player.username)};
 					`}
 					>
 						{placeStyles[index]?.label ?? index + 1}
@@ -170,21 +162,22 @@
 					<div class="flex-1">
 						<p
 							class="text-lg font-semibold group-hover:underline"
-							style={`color:${player.Color}`}
+							style={`color:${getPlayerColor(player.username)}`}
 						>
-							{player.Username}
+							{player.username}
 						</p>
-						<p class="text-sm text-surface-400">
-							{player.Description}
-						</p>
+						{#if player.email}
+							<p class="text-sm text-surface-400">
+								{player.email}
+							</p>
+						{/if}
 					</div>
 
-					<!-- SCORE -->
+					<!-- CREATED AT -->
 					<div class="text-right">
-						<p class="text-xl font-bold">
-							{player.Score}
+						<p class="text-sm text-surface-400">
+							{new Date(player.created_at).toLocaleDateString()}
 						</p>
-						<p class="text-xs text-surface-400">очки</p>
 					</div>
 				</div>
 			</a>

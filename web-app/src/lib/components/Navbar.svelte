@@ -21,9 +21,9 @@
     {#if currentUser}
         <div class="flex items-center space-x-4">
             <a
-                href={`/users/${currentUser.ID}`}
+                href={`/users/${currentUser.id}`}
                 class="text-primary-400 hover:text-primary-300"
-                >{currentUser.Username}</a
+                >{currentUser.username}</a
             >
             <button class="btn btn-ghost btn-sm" on:click={logout}>Выйти</button
             >

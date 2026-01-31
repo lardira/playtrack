@@ -14,39 +14,36 @@
 	import { storePopup } from "@skeletonlabs/skeleton";
 	storePopup.set({ computePosition, autoUpdate, flip, shift, offset, arrow });
 
-	import { user } from "../stores/user";
+	import { user, token } from "../stores/user";
 	import { onMount } from "svelte";
 	import type { Player } from "../lib/types";
+	import { playersMock } from "../lib/mocks";
 
 	let currentUser: Player | null = null;
 	onMount(() => {
 		user.subscribe((value) => (currentUser = value));
 	});
-	let players: Player[] = [
-		{
-			ID: "1",
-			Username: "Alice",
-			Color: "#f97316", // orange
-		},
-		{
-			ID: "2",
-			Username: "Bob",
-			Color: "#22c55e", // green
-		},
-		{
-			ID: "3",
-			Username: "Charlie",
-			Color: "#3b82f6", // blue
-		},
-		{
-			ID: "4",
-			Username: "Diana",
-			Color: "#a855f7", // purple
-		},
-	];
+	let players: Player[] = playersMock;
+
+	// Генерируем цвет на основе username для UI
+	function getPlayerColor(username: string): string {
+		const colors = [
+			"#f97316",
+			"#22c55e",
+			"#3b82f6",
+			"#a855f7",
+			"#ec4899",
+			"#14b8a6",
+		];
+		const hash = username
+			.split("")
+			.reduce((acc, char) => acc + char.charCodeAt(0), 0);
+		return colors[hash % colors.length];
+	}
 
 	function logout() {
 		user.set(null);
+		token.set(null);
 		window.location.href = "/";
 	}
 </script>
@@ -57,14 +54,19 @@
 		<!-- App Bar -->
 		<AppBar>
 			<svelte:fragment slot="lead">
-				<strong class="text-xl uppercase">PlayTracker</strong>
+				<a
+					href="/"
+					class="cursor-pointer hover:opacity-80 transition-opacity"
+				>
+					<strong class="text-xl uppercase">PlayTracker</strong>
+				</a>
 			</svelte:fragment>
 			<svelte:fragment slot="trail">
 				{#if currentUser}
 					<a
-						href={`/users/${currentUser.ID}`}
+						href={`/users/${currentUser.id}`}
 						class="btn btn-sm variant-ghost-surface"
-						>{currentUser.Username}</a
+						>{currentUser.username}</a
 					>
 					<button
 						class="btn btn-sm variant-ghost-surface"
@@ -80,14 +82,14 @@
 				<div class="flex items-center gap-2 mr-3">
 					{#each players as player}
 						<a
-							href={`/users/${player.ID}`}
+							href={`/users/${player.id}`}
 							class="btn btn-sm border transition hover:scale-105"
 							style={`
-								border-color: ${player.Color};
-								color: ${player.Color};
+								border-color: ${getPlayerColor(player.username)};
+								color: ${getPlayerColor(player.username)};
 							`}
 						>
-							{player.Username}
+							{player.username}
 						</a>
 					{/each}
 				</div>

@@ -1,10 +1,10 @@
 <script lang="ts">
-    import type { LeaderboardRow, Player } from "../types";
-    export let data: LeaderboardRow[] = [];
+    import type { LeaderboardPlayer, Player } from "../types";
+    export let data: LeaderboardPlayer[] = [];
     export const players: Player[] = [];
 
     let period = "week";
-    let metric = "total";
+    let metric: "total" | "completed" | "dropped" | "rerolled" = "total";
 </script>
 
 <div class="card p-4 space-y-4">
