@@ -28,6 +28,7 @@ func main() {
 		Host:        envutil.GetOrDefault("SERVER_HOST", "localhost"),
 		Port:        envutil.GetOrDefault("SERVER_PORT", "8080"),
 		DatabaseURL: envutil.MustGet("DB_URL"),
+		JWTSecret:   envutil.MustGet("JWT_TOKEN_SECRET"),
 	}
 	server, err := server.New(ctx, opts)
 	if err != nil {

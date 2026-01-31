@@ -56,6 +56,16 @@ func (r *PGRepository) FindOne(ctx context.Context, id string) (*Player, error) 
 	return p, nil
 }
 
+func (r *PGRepository) FindOneByUsername(ctx context.Context, username string) (*Player, error) {
+	query := fmt.Sprintf(`SELECT %s FROM player WHERE username=$1`, playerColumns)
+	row := r.pool.QueryRow(ctx, query, username)
+	p, err := playerFromRow(row)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
 func (r *PGRepository) Insert(ctx context.Context, player *Player) (string, error) {
 	var id string
 
@@ -91,6 +101,9 @@ func (r *PGRepository) Update(ctx context.Context, player *PlayerUpdate) (string
 	}
 	if player.Username != nil {
 		updBuild = updBuild.Set("username", *player.Username)
+	}
+	if player.Password != nil {
+		updBuild = updBuild.Set("password", *player.Password)
 	}
 
 	query, args, err := updBuild.Where(sq.Eq{"id": player.ID}).Suffix("RETURNING id").ToSql()

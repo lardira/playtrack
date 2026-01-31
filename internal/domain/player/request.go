@@ -2,15 +2,6 @@ package player
 
 import "time"
 
-type RequestCreatePlayer struct {
-	Body struct {
-		Username string  `json:"username"`
-		Img      *string `json:"img" required:"false"`
-		Email    *string `json:"email" format:"email" required:"false"`
-		Password string  `json:"password"`
-	}
-}
-
 type RequestUpdatePlayer struct {
 	PlayerID string `path:"id" format:"uuid"`
 	Body     struct {

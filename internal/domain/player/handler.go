@@ -9,7 +9,6 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/lardira/playtrack/internal/domain"
 	"github.com/lardira/playtrack/internal/domain/game"
-	"github.com/lardira/playtrack/internal/pkg/password"
 )
 
 type PlayerRepository interface {
@@ -58,7 +57,6 @@ func (h *Handler) Register(api huma.API) {
 	huma.Get(grp, "/", h.GetAll)
 	// huma.Get(grp, "/leaderboard", h.GetAll)
 	huma.Get(grp, "/{id}", h.GetOne)
-	huma.Post(grp, "/", h.Create)
 	huma.Patch(grp, "/{id}", h.Update)
 	huma.Get(grp, "/{id}/played-games", h.GetAllPlayedGames)
 	huma.Get(grp, "/{id}/played-games/{gameID}", h.GetOnePlayedGame)
@@ -87,36 +85,6 @@ func (h *Handler) GetOne(ctx context.Context, i *struct {
 
 	resp := domain.ResponseItem[Player]{}
 	resp.Body.Item = player
-	return &resp, nil
-}
-
-func (h *Handler) Create(
-	ctx context.Context,
-	i *RequestCreatePlayer,
-) (*domain.ResponseID[string], error) {
-	nPlayer := Player{
-		Username: i.Body.Username,
-		Img:      i.Body.Img,
-		Email:    i.Body.Email,
-		Password: i.Body.Password,
-	}
-	if err := nPlayer.Valid(); err != nil {
-		return nil, huma.Error400BadRequest("entity is not valid", err)
-	}
-
-	hashedPassword, err := password.Hash(nPlayer.Password)
-	if err != nil {
-		return nil, huma.Error500InternalServerError("could not create player")
-	}
-	nPlayer.Password = hashedPassword
-
-	id, err := h.playerRepository.Insert(ctx, &nPlayer)
-	if err != nil {
-		return nil, huma.Error500InternalServerError("create", err)
-	}
-
-	resp := domain.ResponseID[string]{}
-	resp.Body.ID = id
 	return &resp, nil
 }
 

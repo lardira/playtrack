@@ -52,11 +52,9 @@ type Player struct {
 }
 
 func (p *Player) Valid() error {
-
 	if len(p.Username) < minUsernameLength {
 		return fmt.Errorf("username must not be less than %d symbols", minUsernameLength)
 	}
-
 	if len(p.Password) < minPasswordLength {
 		return fmt.Errorf("password must not be less than %d symbols", minPasswordLength)
 	}
@@ -69,11 +67,15 @@ type PlayerUpdate struct {
 	Username *string
 	Img      *string
 	Email    *string
+	Password *string
 }
 
 func (p *PlayerUpdate) Valid() error {
 	if p.Username != nil && len(*p.Username) < minUsernameLength {
 		return fmt.Errorf("username must not be less than %d symbols", minUsernameLength)
+	}
+	if p.Password != nil && len(*p.Password) < minPasswordLength {
+		return fmt.Errorf("password must not be less than %d symbols", minPasswordLength)
 	}
 	return nil
 }
