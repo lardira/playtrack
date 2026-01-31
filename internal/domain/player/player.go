@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	minPasswordLength = 8
-	minUsernameLength = 4
+	MinPasswordLength = 8
+	MinUsernameLength = 4
 )
 
 const (
@@ -24,6 +24,11 @@ const (
 	PlayedGameStatusCompleted  PlayedGameStatus = "completed"
 	PlayedGameStatusDropped    PlayedGameStatus = "dropped"
 	PlayedGameStatusRerolled   PlayedGameStatus = "rerolled"
+)
+
+var (
+	ErrUsernameMinLen = fmt.Errorf("username must not be less than %d symbols", MinUsernameLength)
+	ErrPasswordMinLen = fmt.Errorf("password must not be less than %d symbols", MinPasswordLength)
 )
 
 var (
@@ -52,13 +57,12 @@ type Player struct {
 }
 
 func (p *Player) Valid() error {
-	if len(p.Username) < minUsernameLength {
-		return fmt.Errorf("username must not be less than %d symbols", minUsernameLength)
+	if len(p.Username) < MinUsernameLength {
+		return ErrUsernameMinLen
 	}
-	if len(p.Password) < minPasswordLength {
-		return fmt.Errorf("password must not be less than %d symbols", minPasswordLength)
+	if len(p.Password) < MinPasswordLength {
+		return ErrPasswordMinLen
 	}
-
 	return nil
 }
 
@@ -71,11 +75,11 @@ type PlayerUpdate struct {
 }
 
 func (p *PlayerUpdate) Valid() error {
-	if p.Username != nil && len(*p.Username) < minUsernameLength {
-		return fmt.Errorf("username must not be less than %d symbols", minUsernameLength)
+	if p.Username != nil && len(*p.Username) < MinUsernameLength {
+		return ErrUsernameMinLen
 	}
-	if p.Password != nil && len(*p.Password) < minPasswordLength {
-		return fmt.Errorf("password must not be less than %d symbols", minPasswordLength)
+	if p.Password != nil && len(*p.Password) < MinPasswordLength {
+		return ErrPasswordMinLen
 	}
 	return nil
 }
