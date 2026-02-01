@@ -54,11 +54,12 @@ func (r *PGPlayedRepository) FindOne(ctx context.Context, playerID string, id in
 	return p, nil
 }
 
-func (r *PGPlayedRepository) FindLast(ctx context.Context, playerID string) (*PlayedGame, error) {
+func (r *PGPlayedRepository) FindLastNotReroll(ctx context.Context, playerID string) (*PlayedGame, error) {
 	query := fmt.Sprintf(`SELECT %s FROM played_game 
 		WHERE player_id=$1 
+		AND status!=$2 
 		ORDER BY started_at DESC LIMIT 1 OFFSET 1`, playedGameColumns)
-	row := r.pool.QueryRow(ctx, query, playerID)
+	row := r.pool.QueryRow(ctx, query, playerID, PlayedGameStatusRerolled)
 	p, err := playedGameFromRow(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

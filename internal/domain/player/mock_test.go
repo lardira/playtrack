@@ -395,12 +395,12 @@ func (_c *MockPlayedGameRepository_FindAll_Call) RunAndReturn(run func(ctx conte
 	return _c
 }
 
-// FindLast provides a mock function for the type MockPlayedGameRepository
-func (_mock *MockPlayedGameRepository) FindLast(ctx context.Context, playerID string) (*PlayedGame, error) {
+// FindLastNotReroll provides a mock function for the type MockPlayedGameRepository
+func (_mock *MockPlayedGameRepository) FindLastNotReroll(ctx context.Context, playerID string) (*PlayedGame, error) {
 	ret := _mock.Called(ctx, playerID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for FindLast")
+		panic("no return value specified for FindLastNotReroll")
 	}
 
 	var r0 *PlayedGame
@@ -423,19 +423,19 @@ func (_mock *MockPlayedGameRepository) FindLast(ctx context.Context, playerID st
 	return r0, r1
 }
 
-// MockPlayedGameRepository_FindLast_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindLast'
-type MockPlayedGameRepository_FindLast_Call struct {
+// MockPlayedGameRepository_FindLastNotReroll_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindLastNotReroll'
+type MockPlayedGameRepository_FindLastNotReroll_Call struct {
 	*mock.Call
 }
 
-// FindLast is a helper method to define mock.On call
+// FindLastNotReroll is a helper method to define mock.On call
 //   - ctx context.Context
 //   - playerID string
-func (_e *MockPlayedGameRepository_Expecter) FindLast(ctx interface{}, playerID interface{}) *MockPlayedGameRepository_FindLast_Call {
-	return &MockPlayedGameRepository_FindLast_Call{Call: _e.mock.On("FindLast", ctx, playerID)}
+func (_e *MockPlayedGameRepository_Expecter) FindLastNotReroll(ctx interface{}, playerID interface{}) *MockPlayedGameRepository_FindLastNotReroll_Call {
+	return &MockPlayedGameRepository_FindLastNotReroll_Call{Call: _e.mock.On("FindLastNotReroll", ctx, playerID)}
 }
 
-func (_c *MockPlayedGameRepository_FindLast_Call) Run(run func(ctx context.Context, playerID string)) *MockPlayedGameRepository_FindLast_Call {
+func (_c *MockPlayedGameRepository_FindLastNotReroll_Call) Run(run func(ctx context.Context, playerID string)) *MockPlayedGameRepository_FindLastNotReroll_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -453,12 +453,12 @@ func (_c *MockPlayedGameRepository_FindLast_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockPlayedGameRepository_FindLast_Call) Return(playedGame *PlayedGame, err error) *MockPlayedGameRepository_FindLast_Call {
+func (_c *MockPlayedGameRepository_FindLastNotReroll_Call) Return(playedGame *PlayedGame, err error) *MockPlayedGameRepository_FindLastNotReroll_Call {
 	_c.Call.Return(playedGame, err)
 	return _c
 }
 
-func (_c *MockPlayedGameRepository_FindLast_Call) RunAndReturn(run func(ctx context.Context, playerID string) (*PlayedGame, error)) *MockPlayedGameRepository_FindLast_Call {
+func (_c *MockPlayedGameRepository_FindLastNotReroll_Call) RunAndReturn(run func(ctx context.Context, playerID string) (*PlayedGame, error)) *MockPlayedGameRepository_FindLastNotReroll_Call {
 	_c.Call.Return(run)
 	return _c
 }
