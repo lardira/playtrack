@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -11,6 +12,7 @@ import (
 	"github.com/lardira/playtrack/internal/domain"
 	"github.com/lardira/playtrack/internal/domain/player"
 	"github.com/lardira/playtrack/internal/middleware"
+	"github.com/lardira/playtrack/internal/pkg/apiutil"
 	"github.com/lardira/playtrack/internal/pkg/ctxutil"
 	"github.com/lardira/playtrack/internal/pkg/password"
 )
@@ -42,17 +44,32 @@ func (h *Handler) Register(api huma.API) {
 	grp.UseSimpleModifier(func(op *huma.Operation) {
 		op.Tags = []string{"auth"}
 	})
-	secgrp := huma.NewGroup(api, "")
-	secgrp.UseSimpleModifier(func(op *huma.Operation) {
-		op.Tags = []string{"auth"}
-	})
-	secgrp.UseMiddleware(
-		middleware.Authorize(h.secret),
-	)
 
-	huma.Post(grp, "/register", h.RegisterPlayer)
-	huma.Post(grp, "/login", h.Login)
-	huma.Patch(secgrp, "/set-password", h.SetPassword)
+	huma.Register(grp, huma.Operation{
+		OperationID: "register-player",
+		Method:      http.MethodPost,
+		Path:        "/register",
+		Summary:     "register player",
+		Description: "register a new player (auth and player entity will be created)",
+	}, h.RegisterPlayer)
+
+	huma.Register(grp, huma.Operation{
+		OperationID: "login",
+		Method:      http.MethodPost,
+		Path:        "/loing",
+		Summary:     "login",
+		Description: "login a player in order to get a jwt token",
+	}, h.Login)
+
+	huma.Register(grp, huma.Operation{
+		OperationID: "set-password",
+		Method:      http.MethodPatch,
+		Path:        "/set-password",
+		Summary:     "set new password",
+		Description: "set new password for a player secured",
+		Security:    apiutil.OperationSecurity,
+		Middlewares: huma.Middlewares{middleware.Authorize(h.secret)},
+	}, h.SetPassword)
 }
 
 func (h *Handler) Login(ctx context.Context, i *RequestLoginPlayer) (*ResponseLoginPlayer, error) {
@@ -118,6 +135,16 @@ func (h *Handler) SetPassword(
 	playerID, ok := ctxutil.GetPlayerID(ctx)
 	if !ok {
 		return nil, huma.Error401Unauthorized("player id is invalid")
+	}
+
+	found, err := h.playerRepository.FindOneByUsername(ctx, i.Body.Username)
+	if err != nil {
+		log.Printf("find one by username %v: %v", i.Body.Username, err)
+		return nil, huma.Error401Unauthorized("player not found")
+	}
+	if found.ID != playerID {
+		log.Printf("player %v access to %v", playerID, found.ID)
+		return nil, huma.Error403Forbidden("player cannot access this entity")
 	}
 
 	nPlayer := player.PlayerUpdate{
