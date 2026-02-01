@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -67,6 +68,7 @@ func (h *Handler) Register(api huma.API) {
 
 func (h *Handler) GetAll(ctx context.Context, i *struct{}) (*domain.ResponseItems[Player], error) {
 	players, err := h.playerRepository.FindAll(ctx)
+	log.Printf("player find all: %v", err)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("find all", err)
 	}
@@ -81,6 +83,7 @@ func (h *Handler) GetOne(ctx context.Context, i *struct {
 }) (*domain.ResponseItem[Player], error) {
 	player, err := h.playerRepository.FindOne(ctx, i.ID)
 	if err != nil {
+		log.Printf("player find one: %v", err)
 		return nil, huma.Error500InternalServerError("find", err)
 	}
 
@@ -104,11 +107,13 @@ func (h *Handler) Update(
 		Email:    i.Body.Email,
 	}
 	if err := nPlayer.Valid(); err != nil {
+		log.Printf("player valid: %v", err)
 		return nil, huma.Error400BadRequest("entity is not valid", err)
 	}
 
 	id, err := h.playerRepository.Update(ctx, &nPlayer)
 	if err != nil {
+		log.Printf("player update: %v", err)
 		return nil, huma.Error500InternalServerError("update", err)
 	}
 
@@ -122,6 +127,7 @@ func (h *Handler) GetAllPlayedGames(ctx context.Context, i *struct {
 }) (*domain.ResponseItems[PlayedGame], error) {
 	games, err := h.playedGameRepository.FindAll(ctx, i.ID)
 	if err != nil {
+		log.Printf("played games find all: %v", err)
 		return nil, huma.Error500InternalServerError("find all", err)
 	}
 
@@ -136,6 +142,7 @@ func (h *Handler) GetOnePlayedGame(ctx context.Context, i *struct {
 }) (*domain.ResponseItem[PlayedGame], error) {
 	game, err := h.playedGameRepository.FindOne(ctx, i.PlayerID, i.GameID)
 	if err != nil {
+		log.Printf("played games find one: %v", err)
 		return nil, huma.Error500InternalServerError("find", err)
 	}
 
@@ -154,6 +161,7 @@ func (h *Handler) CreatePlayedGame(
 
 	game, err := h.gameRepository.FindOne(ctx, i.Body.GameID)
 	if err != nil {
+		log.Printf("game find one: %v", err)
 		return nil, huma.Error400BadRequest("game find", err)
 	}
 
@@ -164,15 +172,18 @@ func (h *Handler) CreatePlayedGame(
 	}
 
 	if err := nPlayed.Valid(); err != nil {
+		log.Printf("played game valid: %v", err)
 		return nil, huma.Error400BadRequest("entity is not valid", err)
 	}
 
 	if err := h.containsNonterminatedPlayed(ctx, i.PlayerID); err != nil {
+		log.Printf("player %v contains nonterminated: %v", i.PlayerID, err)
 		return nil, err
 	}
 
 	id, err := h.playedGameRepository.Insert(ctx, &nPlayed)
 	if err != nil {
+		log.Printf("played game insert: %v", err)
 		return nil, huma.Error500InternalServerError("create", err)
 	}
 
@@ -199,17 +210,20 @@ func (h *Handler) UpdatePlayedGame(
 		PlayTime:    i.Body.PlayTime,
 	}
 	if err := nGame.Valid(); err != nil {
+		log.Printf("played game update valid: %v", err)
 		return nil, huma.Error400BadRequest("entity is not valid", err)
 	}
 
 	playedGame, err := h.playedGameRepository.FindOne(ctx, i.PlayerID, i.GameID)
 	if err != nil {
+		log.Printf("played find one: %v", err)
 		return nil, huma.Error400BadRequest("entity is not found", err)
 	}
 
 	if nGame.Status != nil {
 		newStatus := *nGame.Status
 		if err := playedGame.StatusNextValid(newStatus); err != nil {
+			log.Printf("played game %v next status check: %v", playedGame.ID, err)
 			return nil, huma.Error400BadRequest("entity is not valid", err)
 		}
 
@@ -222,6 +236,7 @@ func (h *Handler) UpdatePlayedGame(
 
 			prevGame, err := h.playedGameRepository.FindLastNotReroll(ctx, i.PlayerID)
 			if err != nil && !errors.Is(err, ErrPlayedGameNotFound) {
+				log.Printf("last played game find: %v", err)
 				return nil, huma.Error400BadRequest("game played find", err)
 			}
 
@@ -241,6 +256,7 @@ func (h *Handler) UpdatePlayedGame(
 
 	id, err := h.playedGameRepository.Update(ctx, &nGame)
 	if err != nil {
+		log.Printf("played game update: %v", err)
 		return nil, huma.Error500InternalServerError("update", err)
 	}
 
@@ -257,8 +273,9 @@ func (h *Handler) containsNonterminatedPlayed(ctx context.Context, playerID stri
 
 	for _, p := range allPlayed {
 		if !p.StatusTerminated() {
-			msg := fmt.Sprintf("player has game in nonterminated status: %v", p.ID)
-			return huma.Error400BadRequest(msg)
+			return huma.Error400BadRequest(
+				fmt.Sprintf("player has game in nonterminated status: %v", p.ID),
+			)
 		}
 	}
 	return nil
@@ -266,10 +283,7 @@ func (h *Handler) containsNonterminatedPlayed(ctx context.Context, playerID stri
 
 func checkAuthorizedFor(ctx context.Context, playerID string) bool {
 	ctxPlayerID, ok := ctxutil.GetPlayerID(ctx)
-	if !ok {
-		return false
-	}
-	if ctxPlayerID != playerID {
+	if !ok || ctxPlayerID != playerID {
 		return false
 	}
 	return true
