@@ -112,12 +112,19 @@ func TestSetPassword(t *testing.T) {
 	handler := NewHandler(testSecret, playerRepository)
 
 	newID := uuid.NewString()
+	username := testutil.Faker().Username()
 	ctx := ctxutil.SetPlayerID(t.Context(), newID)
 
 	req := RequestSetPassword{}
+	req.Body.Username = username
 	req.Body.Password = testutil.Faker().Password(true, true, true, true, false, player.MinPasswordLength)
 
 	var constructedPlayer *player.PlayerUpdate
+
+	playerRepository.
+		On("FindOneByUsername", ctx, username).
+		Once().
+		Return(&player.Player{ID: newID, Username: username}, nil)
 
 	playerRepository.
 		On(
@@ -138,6 +145,30 @@ func TestSetPassword(t *testing.T) {
 	assert.Equal(t, newID, resp.Body.ID)
 
 	assert.True(t, password.CompareHash(req.Body.Password, *constructedPlayer.Password))
+}
+
+func TestSetPassword_DifferentPlayer(t *testing.T) {
+	playerRepository := NewMockPlayerRepository(t)
+	handler := NewHandler(testSecret, playerRepository)
+
+	newID := uuid.NewString()
+	diffID := uuid.NewString()
+	username := testutil.Faker().Username()
+	ctx := ctxutil.SetPlayerID(t.Context(), newID)
+
+	req := RequestSetPassword{}
+	req.Body.Username = username
+	req.Body.Password = testutil.Faker().Password(true, true, true, true, false, player.MinPasswordLength)
+
+	playerRepository.
+		On("FindOneByUsername", ctx, username).
+		Once().
+		Return(&player.Player{ID: diffID, Username: username}, nil)
+
+	playerRepository.AssertNotCalled(t, "Update")
+
+	_, err := handler.SetPassword(ctx, &req)
+	assert.Error(t, err)
 }
 
 func TestIssueToken(t *testing.T) {

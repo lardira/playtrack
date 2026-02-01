@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -56,14 +57,61 @@ func (h *Handler) Register(api huma.API) {
 		op.Tags = []string{"players"}
 	})
 
-	huma.Get(grp, "/", h.GetAll)
-	// huma.Get(grp, "/leaderboard", h.GetAll)
-	huma.Get(grp, "/{id}", h.GetOne)
-	huma.Patch(grp, "/{id}", h.Update)
-	huma.Get(grp, "/{id}/played-games", h.GetAllPlayedGames)
-	huma.Get(grp, "/{id}/played-games/{gameID}", h.GetOnePlayedGame)
-	huma.Post(grp, "/{id}/played-games", h.CreatePlayedGame)
-	huma.Patch(grp, "/{id}/played-games/{gameID}", h.UpdatePlayedGame)
+	huma.Register(grp, huma.Operation{
+		OperationID: "players-get-all",
+		Method:      http.MethodGet,
+		Path:        "/",
+		Summary:     "get all players",
+		Description: "get all players",
+	}, h.GetAll)
+
+	huma.Register(grp, huma.Operation{
+		OperationID: "players-get-one",
+		Method:      http.MethodGet,
+		Path:        "/{id}",
+		Summary:     "get one player",
+		Description: "get one player",
+	}, h.GetOne)
+
+	huma.Register(grp, huma.Operation{
+		OperationID: "players-update-one",
+		Method:      http.MethodPatch,
+		Path:        "/{id}",
+		Summary:     "update player",
+		Description: "update a player",
+	}, h.Update)
+
+	huma.Register(grp, huma.Operation{
+		OperationID: "played-games-get-all",
+		Method:      http.MethodGet,
+		Path:        "/{id}/played-games",
+		Summary:     "get all played games",
+		Description: "get all played games",
+	}, h.GetAllPlayedGames)
+
+	huma.Register(grp, huma.Operation{
+		OperationID: "played-games-get-one",
+		Method:      http.MethodGet,
+		Path:        "/{id}/played-games/{gameID}",
+		Summary:     "get one played game",
+		Description: "get one played game",
+	}, h.GetOnePlayedGame)
+
+	huma.Register(grp, huma.Operation{
+		OperationID: "played-games-create-one",
+		Method:      http.MethodPost,
+		Path:        "/{id}/played-games",
+		Summary:     "create played game",
+		Description: "create a new played game",
+	}, h.CreatePlayedGame)
+
+	huma.Register(grp, huma.Operation{
+		OperationID: "played-games-update-one",
+		Method:      http.MethodPatch,
+		Path:        "/{id}/played-games/{gameID}",
+		Summary:     "update played game",
+		Description: "update a played game",
+	}, h.UpdatePlayedGame)
 }
 
 func (h *Handler) GetAll(ctx context.Context, i *struct{}) (*domain.ResponseItems[Player], error) {
