@@ -3,6 +3,7 @@ package game
 import (
 	"context"
 	"log"
+	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/lardira/playtrack/internal/domain"
@@ -30,9 +31,29 @@ func (h *Handler) Register(api huma.API) {
 		op.Tags = []string{"games"}
 	})
 
-	huma.Get(grp, "/", h.GetAll)
-	huma.Get(grp, "/{id}", h.GetOne)
-	huma.Post(grp, "/", h.Create)
+	huma.Register(grp, huma.Operation{
+		OperationID: "games-get-all",
+		Method:      http.MethodGet,
+		Path:        "/",
+		Summary:     "get all games",
+		Description: "get all games",
+	}, h.GetAll)
+
+	huma.Register(grp, huma.Operation{
+		OperationID: "games-get-one",
+		Method:      http.MethodGet,
+		Path:        "/{id}",
+		Summary:     "get game",
+		Description: "get one game",
+	}, h.GetOne)
+
+	huma.Register(grp, huma.Operation{
+		OperationID: "games-post-create",
+		Method:      http.MethodPost,
+		Path:        "/",
+		Summary:     "create game",
+		Description: "create a new game",
+	}, h.Create)
 }
 
 func (h *Handler) GetAll(ctx context.Context, i *struct{}) (*domain.ResponseItems[Game], error) {
