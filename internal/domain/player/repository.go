@@ -2,7 +2,6 @@ package player
 
 import (
 	"context"
-	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
@@ -29,8 +28,16 @@ func NewPGRepository(pool *pgxpool.Pool) *PGRepository {
 func (r *PGRepository) FindAll(ctx context.Context) ([]Player, error) {
 	out := make([]Player, 0)
 
-	query := fmt.Sprintf(`SELECT %s FROM player`, playerColumns)
-	rows, err := r.pool.Query(ctx, query)
+	sqlBuild := sq.Select(playerColumns).
+		PlaceholderFormat(sq.Dollar).
+		From(TablePlayer)
+
+	query, args, err := sqlBuild.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -47,8 +54,17 @@ func (r *PGRepository) FindAll(ctx context.Context) ([]Player, error) {
 }
 
 func (r *PGRepository) FindOne(ctx context.Context, id string) (*Player, error) {
-	query := fmt.Sprintf(`SELECT %s FROM player WHERE id=$1`, playerColumns)
-	row := r.pool.QueryRow(ctx, query, id)
+	sqlBuild := sq.Select(playerColumns).
+		PlaceholderFormat(sq.Dollar).
+		From(TablePlayer).
+		Where(sq.Eq{"id": id})
+
+	query, args, err := sqlBuild.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	row := r.pool.QueryRow(ctx, query, args...)
 	p, err := playerFromRow(row)
 	if err != nil {
 		return nil, err
@@ -57,8 +73,17 @@ func (r *PGRepository) FindOne(ctx context.Context, id string) (*Player, error) 
 }
 
 func (r *PGRepository) FindOneByUsername(ctx context.Context, username string) (*Player, error) {
-	query := fmt.Sprintf(`SELECT %s FROM player WHERE username=$1`, playerColumns)
-	row := r.pool.QueryRow(ctx, query, username)
+	sqlBuild := sq.Select(playerColumns).
+		PlaceholderFormat(sq.Dollar).
+		From(TablePlayer).
+		Where(sq.Eq{"username": username})
+
+	query, args, err := sqlBuild.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	row := r.pool.QueryRow(ctx, query, args...)
 	p, err := playerFromRow(row)
 	if err != nil {
 		return nil, err
@@ -69,21 +94,25 @@ func (r *PGRepository) FindOneByUsername(ctx context.Context, username string) (
 func (r *PGRepository) Insert(ctx context.Context, player *Player) (string, error) {
 	var id string
 
-	query := `INSERT INTO player (id, username, img, email, password) 
-			VALUES (@id, @username, @img, @email, @password)
-			RETURNING id`
+	sqlBuild := sq.Insert(TablePlayer).
+		PlaceholderFormat(sq.Dollar).
+		Columns("id", "username", "img", "email", "password").
+		Values(
+			uuid.NewString(),
+			player.Username,
+			player.Img,
+			player.Email,
+			player.Password,
+		).
+		Suffix("RETURNING id")
 
-	args := pgx.NamedArgs{
-		"id":       uuid.NewString(),
-		"username": player.Username,
-		"img":      player.Img,
-		"email":    player.Email,
-		"password": player.Password,
+	query, args, err := sqlBuild.ToSql()
+	if err != nil {
+		return id, err
 	}
 
-	row := r.pool.QueryRow(ctx, query, args)
-	err := row.Scan(&id)
-	if err != nil {
+	row := r.pool.QueryRow(ctx, query, args...)
+	if err := row.Scan(&id); err != nil {
 		return id, err
 	}
 	return id, nil
@@ -91,7 +120,7 @@ func (r *PGRepository) Insert(ctx context.Context, player *Player) (string, erro
 
 func (r *PGRepository) Update(ctx context.Context, player *PlayerUpdate) (string, error) {
 	var id string
-	updBuild := sq.Update("player").PlaceholderFormat(sq.Dollar)
+	updBuild := sq.Update(TablePlayer).PlaceholderFormat(sq.Dollar)
 
 	if player.Email != nil {
 		updBuild = updBuild.Set("email", *player.Email)

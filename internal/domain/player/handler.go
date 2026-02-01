@@ -68,8 +68,8 @@ func (h *Handler) Register(api huma.API) {
 
 func (h *Handler) GetAll(ctx context.Context, i *struct{}) (*domain.ResponseItems[Player], error) {
 	players, err := h.playerRepository.FindAll(ctx)
-	log.Printf("player find all: %v", err)
 	if err != nil {
+		log.Printf("player find all: %v", err)
 		return nil, huma.Error500InternalServerError("find all", err)
 	}
 

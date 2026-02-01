@@ -3,13 +3,17 @@ package player
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lardira/playtrack/internal/pkg/types"
+)
+
+const (
+	TablePlayer     = "player"
+	TablePlayedGame = "played_game"
 )
 
 var (
@@ -29,8 +33,16 @@ func NewPGPlayedRepository(pool *pgxpool.Pool) *PGPlayedRepository {
 func (r *PGPlayedRepository) FindAll(ctx context.Context, playerID string) ([]PlayedGame, error) {
 	out := make([]PlayedGame, 0)
 
-	query := fmt.Sprintf(`SELECT %s FROM played_game WHERE player_id=$1`, playedGameColumns)
-	rows, err := r.pool.Query(ctx, query, playerID)
+	sqlBuild := sq.Select(playedGameColumns).
+		PlaceholderFormat(sq.Dollar).
+		From(TablePlayedGame).
+		Where(sq.Eq{"player_id": playerID})
+
+	query, args, err := sqlBuild.ToSql()
+	if err != nil {
+		return nil, err
+	}
+	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -47,8 +59,16 @@ func (r *PGPlayedRepository) FindAll(ctx context.Context, playerID string) ([]Pl
 }
 
 func (r *PGPlayedRepository) FindOne(ctx context.Context, playerID string, id int) (*PlayedGame, error) {
-	query := fmt.Sprintf(`SELECT %s FROM played_game WHERE player_id=$1 AND id=$2`, playedGameColumns)
-	row := r.pool.QueryRow(ctx, query, playerID, id)
+	sqlBuild := sq.Select(playedGameColumns).
+		PlaceholderFormat(sq.Dollar).
+		From(TablePlayedGame).
+		Where(sq.Eq{"player_id": playerID, "id": id})
+
+	query, args, err := sqlBuild.ToSql()
+	if err != nil {
+		return nil, err
+	}
+	row := r.pool.QueryRow(ctx, query, args...)
 	p, err := playedGameFromRow(row)
 	if err != nil {
 		return nil, err
@@ -57,11 +77,19 @@ func (r *PGPlayedRepository) FindOne(ctx context.Context, playerID string, id in
 }
 
 func (r *PGPlayedRepository) FindLastNotReroll(ctx context.Context, playerID string) (*PlayedGame, error) {
-	query := fmt.Sprintf(`SELECT %s FROM played_game 
-		WHERE player_id=$1 
-		AND status!=$2 
-		ORDER BY started_at DESC LIMIT 1 OFFSET 1`, playedGameColumns)
-	row := r.pool.QueryRow(ctx, query, playerID, PlayedGameStatusRerolled)
+	sqlBuild := sq.Select(playedGameColumns).
+		PlaceholderFormat(sq.Dollar).
+		From(TablePlayedGame).
+		Where(sq.Eq{"player_id": playerID}, sq.NotEq{"status": PlayedGameStatusRerolled}).
+		OrderBy("started_at DESC").
+		Limit(1).
+		Offset(1)
+
+	query, args, err := sqlBuild.ToSql()
+	if err != nil {
+		return nil, err
+	}
+	row := r.pool.QueryRow(ctx, query, args...)
 	p, err := playedGameFromRow(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -75,20 +103,19 @@ func (r *PGPlayedRepository) FindLastNotReroll(ctx context.Context, playerID str
 func (r *PGPlayedRepository) Insert(ctx context.Context, game *PlayedGame) (int, error) {
 	var id int
 
-	query := `INSERT INTO played_game (player_id, game_id, status, points) 
-			VALUES (@player_id, @game_id, @status, @points)
-			RETURNING id`
+	sqlBuild := sq.Insert(TablePlayedGame).
+		PlaceholderFormat(sq.Dollar).
+		Columns("player_id", "game_id", "status", "points").
+		Values(game.PlayerID, game.GameID, PlayedGameStatusAdded, game.Points).
+		Suffix("RETURNING id")
 
-	args := pgx.NamedArgs{
-		"player_id": game.PlayerID,
-		"game_id":   game.GameID,
-		"status":    PlayedGameStatusAdded,
-		"points":    game.Points,
-	}
-
-	row := r.pool.QueryRow(ctx, query, args)
-	err := row.Scan(&id)
+	query, args, err := sqlBuild.ToSql()
 	if err != nil {
+		return id, err
+	}
+	row := r.pool.QueryRow(ctx, query, args...)
+
+	if err := row.Scan(&id); err != nil {
 		return id, err
 	}
 	return id, nil
@@ -96,7 +123,8 @@ func (r *PGPlayedRepository) Insert(ctx context.Context, game *PlayedGame) (int,
 
 func (r *PGPlayedRepository) Update(ctx context.Context, game *PlayedGameUpdate) (int, error) {
 	var id int
-	updBuild := sq.Update("played_game").PlaceholderFormat(sq.Dollar)
+
+	updBuild := sq.Update(TablePlayedGame).PlaceholderFormat(sq.Dollar)
 
 	if game.Points != nil {
 		updBuild = updBuild.Set("points", *game.Points)
