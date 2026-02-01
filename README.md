@@ -19,7 +19,7 @@ git clone https://github.com/lardira/playtrack
 cd ./playtrack
 ```
 
-2. Copy `.env.template` and set environment variables in `.env` files
+2. Copy `.env.template` and set environment variables in `.env` file
 
 3. Start docker services 
 ```
