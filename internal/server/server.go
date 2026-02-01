@@ -46,7 +46,7 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 	mux := http.NewServeMux()
 	servMux := cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
 		AllowedHeaders:   []string{"*"},
 		AllowCredentials: true,
 	}).Handler(mux)
