@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"slices"
 	"time"
+
+	"github.com/lardira/playtrack/internal/pkg/types"
 )
 
 const (
@@ -87,16 +89,16 @@ func (p *PlayerUpdate) Valid() error {
 }
 
 type PlayedGame struct {
-	ID          int              `json:"id"`
-	PlayerID    string           `json:"player_id"`
-	GameID      int              `json:"game_id"`
-	Points      int              `json:"points"`
-	Comment     *string          `json:"comment"`
-	Rating      *int             `json:"rating"`
-	Status      PlayedGameStatus `json:"status"`
-	StartedAt   time.Time        `json:"started_at"`
-	CompletedAt *time.Time       `json:"completed_at"`
-	PlayTime    *DurationString  `json:"play_time"`
+	ID          int                   `json:"id"`
+	PlayerID    string                `json:"player_id"`
+	GameID      int                   `json:"game_id"`
+	Points      int                   `json:"points"`
+	Comment     *string               `json:"comment"`
+	Rating      *int                  `json:"rating"`
+	Status      PlayedGameStatus      `json:"status"`
+	StartedAt   time.Time             `json:"started_at"`
+	CompletedAt *time.Time            `json:"completed_at"`
+	PlayTime    *types.DurationString `json:"play_time"`
 }
 
 func (pg *PlayedGame) Valid() error {
@@ -128,7 +130,7 @@ type PlayedGameUpdate struct {
 	Rating      *int
 	Status      *PlayedGameStatus
 	CompletedAt *time.Time
-	PlayTime    *DurationString
+	PlayTime    *types.DurationString
 }
 
 func (p *PlayedGameUpdate) Valid() error {

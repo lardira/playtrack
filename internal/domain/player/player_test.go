@@ -8,6 +8,7 @@ import (
 	"github.com/alecthomas/assert/v2"
 	"github.com/google/uuid"
 	"github.com/lardira/playtrack/internal/pkg/testutil"
+	"github.com/lardira/playtrack/internal/pkg/types"
 )
 
 func TestPlayerValid(t *testing.T) {
@@ -256,7 +257,7 @@ func validPlayer() Player {
 func validPlayedGame() PlayedGame {
 	comment := testutil.Faker().Comment()
 	completedAt := time.Now()
-	playTime := DurationString{1 * time.Hour}
+	playTime := types.NewDurationString(1 * time.Hour)
 	rating := testutil.Faker().IntRange(minRating, maxRating)
 
 	return PlayedGame{
@@ -291,7 +292,7 @@ func validPlayerUpdate() PlayerUpdate {
 func validPlayedGameUpdate() PlayedGameUpdate {
 	comment := testutil.Faker().Comment()
 	completedAt := time.Now()
-	playTime := DurationString{1 * time.Hour}
+	playTime := types.NewDurationString(1 * time.Hour)
 	rating := testutil.Faker().IntRange(minRating, maxRating)
 	points := testutil.Faker().Int()
 	status := PlayedGameStatusCompleted

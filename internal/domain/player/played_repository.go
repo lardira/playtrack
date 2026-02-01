@@ -9,6 +9,7 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/lardira/playtrack/internal/pkg/types"
 )
 
 var (
@@ -148,7 +149,8 @@ func playedGameFromRow(row pgx.Row) (*PlayedGame, error) {
 		return nil, err
 	}
 	if ptime != nil {
-		p.PlayTime = &DurationString{*ptime}
+		ds := types.NewDurationString(*ptime)
+		p.PlayTime = &ds
 	}
 	return &p, nil
 }
