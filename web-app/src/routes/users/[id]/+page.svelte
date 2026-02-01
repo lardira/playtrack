@@ -1,17 +1,31 @@
 <script lang="ts">
     import { page } from "$app/stores";
-    import type { Player, PlayedGame } from "../../../lib/types";
+    import type { Player, PlayedGame, Game } from "../../../lib/types";
     import { user } from "../../../stores/user";
-    import { getPlayer, getPlayerPlayedGames } from "../../../lib/api";
+    import {
+        getPlayer,
+        getPlayerPlayedGames,
+        getGames,
+        createGame,
+        createPlayedGame,
+        updatePlayedGame,
+    } from "../../../lib/api";
     import ChangePasswordModal from "../../../lib/components/ChangePasswordModal.svelte";
+    import EditPlayedGameModal from "../../../lib/components/EditPlayedGameModal.svelte";
 
     let player: Player | null = null;
     let loading = true;
     let currentUser: Player | null = null;
     let showChangePasswordModal = false;
+    let editPlayedGame: PlayedGame | null = null;
+    let expandedPlayedId: number | null = null;
     let playedGames: PlayedGame[] = [];
+    let allGames: Game[] = [];
 
     user.subscribe((u) => (currentUser = u));
+
+    $: gamesMap = Object.fromEntries(allGames.map((g) => [g.id, g])) as Record<number, Game>;
+    $: gameTitle = (gameId: number) => gamesMap[gameId]?.title ?? `ID: ${gameId}`;
 
     // Генерируем цвет на основе username для UI
     function getPlayerColor(username: string): string {
@@ -57,17 +71,19 @@
     $: if (id) {
         loading = true;
         const requestedId = id;
-        Promise.all([getPlayer(id), getPlayerPlayedGames(id)])
-            .then(([p, games]) => {
+        Promise.all([getPlayer(id), getPlayerPlayedGames(id), getGames()])
+            .then(([p, games, gamesList]) => {
                 if ($page.params.id === requestedId) {
                     player = p;
                     playedGames = games ?? [];
+                    allGames = gamesList ?? [];
                 }
             })
             .catch(() => {
                 if ($page.params.id === requestedId) {
                     player = null;
                     playedGames = [];
+                    allGames = [];
                 }
             })
             .finally(() => {
@@ -76,6 +92,7 @@
     } else {
         player = null;
         playedGames = [];
+        allGames = [];
         loading = false;
     }
 
@@ -113,11 +130,97 @@
         return `${day}/${month}/${year}`;
     }
 
-    // Редактирование записи сыгранной игры (PATCH /v1/players/{id}/played-games/{gameID})
     function handleEditPlayedGame(playedGame: PlayedGame) {
         if (!player) return;
-        // TODO: открыть модальное окно редактирования и вызвать updatePlayedGame после сохранения
-        console.log("Edit played game", player.id, playedGame.game_id, playedGame);
+        editPlayedGame = playedGame;
+    }
+
+    async function refreshPlayedGamesAfterEdit() {
+        if (!player) return;
+        const list = await getPlayerPlayedGames(player.id);
+        playedGames = list ?? playedGames;
+    }
+
+    // --- Создание новой записи (только на своей странице) ---
+    let showNewRow = false;
+    let newRecordTitle = "";
+    let newRecordHoursToBeat = 1;
+    let newRecordUrl = "";
+    let selectedGame: Game | null = null;
+    let createLoading = false;
+    let createError = "";
+
+    $: searchQuery = newRecordTitle.trim().toLowerCase();
+    $: searchResults =
+        searchQuery.length < 2
+            ? []
+            : allGames.filter((g) => g.title.toLowerCase().includes(searchQuery)).slice(0, 8);
+
+    function openNewRow() {
+        showNewRow = true;
+        newRecordTitle = "";
+        newRecordHoursToBeat = 1;
+        newRecordUrl = "";
+        selectedGame = null;
+        createError = "";
+    }
+
+    function cancelNewRow() {
+        showNewRow = false;
+        newRecordTitle = "";
+        newRecordHoursToBeat = 1;
+        newRecordUrl = "";
+        selectedGame = null;
+        createError = "";
+    }
+
+    function selectGame(game: Game) {
+        selectedGame = game;
+        newRecordTitle = game.title;
+        newRecordHoursToBeat = game.hours_to_beat;
+        newRecordUrl = game.url ?? "";
+    }
+
+    async function submitNewRecord() {
+        if (!player || player.id !== currentUser?.id) return;
+        const title = newRecordTitle.trim();
+        if (!title) {
+            createError = "Введите название игры";
+            return;
+        }
+
+        createLoading = true;
+        createError = "";
+
+        try {
+            let gameId: number;
+            if (selectedGame) {
+                gameId = selectedGame.id;
+            } else {
+                const { id } = await createGame({
+                    title,
+                    hours_to_beat: newRecordHoursToBeat,
+                    url: newRecordUrl.trim() || null,
+                });
+                gameId = id;
+            }
+
+            const { id: playedGameId } = await createPlayedGame(player.id, gameId);
+            await updatePlayedGame(player.id, playedGameId, { status: "in_progress" });
+
+            const [updatedPlayed, updatedGames] = await Promise.all([
+                getPlayerPlayedGames(player.id),
+                getGames(),
+            ]);
+            playedGames = updatedPlayed ?? playedGames;
+            allGames = updatedGames ?? allGames;
+
+            cancelNewRow();
+        } catch (err: any) {
+            createError = err?.message ?? "Не удалось создать запись";
+        } finally {
+            createLoading = false;
+        }
     }
 </script>
 
@@ -204,10 +307,116 @@
 
     <!-- GAMES LIST -->
     <section class="max-w-5xl mx-auto mt-14">
-        <h2 class="text-2xl font-bold mb-6">🎮 Игры</h2>
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold">🎮 Игры</h2>
+            {#if isOwnProfile}
+                {#if showNewRow}
+                    <span class="text-surface-400 text-sm">Заполните title, hours_to_beat, url и нажмите «Подтвердить»</span>
+                {:else}
+                    <button
+                        type="button"
+                        class="btn btn-sm variant-filled-primary"
+                        on:click={openNewRow}
+                    >
+                        Добавить запись
+                    </button>
+                {/if}
+            {/if}
+        </div>
 
         <div class="space-y-4">
+            <!-- Новая запись (редактируемое поле) — только на своей странице -->
+            {#if isOwnProfile && showNewRow}
+                <div
+                    class="rounded-xl p-5 bg-surface shadow-md border-2 border-dashed border-primary-500/50"
+                >
+                    <div class="flex flex-col gap-4">
+                        <div class="relative">
+                            <label for="new-game-title" class="block text-sm font-medium text-surface-400 mb-1"
+                                >Название игры (title)</label
+                            >
+                            <input
+                                id="new-game-title"
+                                type="text"
+                                class="input w-full"
+                                placeholder="Введите название или выберите из списка"
+                                bind:value={newRecordTitle}
+                                disabled={createLoading}
+                            />
+                            {#if searchResults.length > 0}
+                                <ul
+                                    class="absolute z-10 mt-1 w-full rounded-lg bg-surface-800 border border-surface-600 shadow-lg max-h-48 overflow-auto"
+                                >
+                                    {#each searchResults as game}
+                                        <li>
+                                            <button
+                                                type="button"
+                                                class="w-full text-left px-4 py-2 hover:bg-surface-700"
+                                                on:click={() => selectGame(game)}
+                                            >
+                                                {game.title}
+                                                <span class="text-surface-500 text-sm ml-2"
+                                                    >({game.hours_to_beat} ч, {game.points} очк.)</span
+                                                >
+                                            </button>
+                                        </li>
+                                    {/each}
+                                </ul>
+                            {/if}
+                        </div>
+                        <div>
+                            <label for="new-game-hours" class="block text-sm font-medium text-surface-400 mb-1"
+                                >Часов на прохождение (hours_to_beat)</label
+                            >
+                            <input
+                                id="new-game-hours"
+                                type="number"
+                                min="1"
+                                class="input w-full"
+                                bind:value={newRecordHoursToBeat}
+                                disabled={createLoading}
+                            />
+                        </div>
+                        <div>
+                            <label for="new-game-url" class="block text-sm font-medium text-surface-400 mb-1"
+                                >URL (необязательно)</label
+                            >
+                            <input
+                                id="new-game-url"
+                                type="url"
+                                class="input w-full"
+                                placeholder="https://..."
+                                bind:value={newRecordUrl}
+                                disabled={createLoading}
+                            />
+                        </div>
+                        {#if createError}
+                            <p class="text-red-400 text-sm">{createError}</p>
+                        {/if}
+                        <div class="flex gap-2">
+                            <button
+                                type="button"
+                                class="btn variant-filled-primary"
+                                disabled={createLoading || !newRecordTitle.trim()}
+                                on:click={submitNewRecord}
+                            >
+                                {createLoading ? "Создание…" : "Подтвердить"}
+                            </button>
+                            <button
+                                type="button"
+                                class="btn variant-ghost-surface"
+                                disabled={createLoading}
+                                on:click={cancelNewRow}
+                            >
+                                Отмена
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            {/if}
+
             {#each playedGames as playedGame}
+                {@const isExpanded = expandedPlayedId === playedGame.id}
                 <div
                     class="group rounded-xl p-5 bg-surface shadow-md transition hover:shadow-xl"
                     style={`border-left: 6px solid ${STATUS_META[playedGame.status].color}`}
@@ -215,120 +424,83 @@
                     <div
                         class="flex flex-col md:flex-row md:items-center gap-4"
                     >
-                        <!-- INFO -->
-                        <div class="flex-1 min-w-0">
-                            <p class="text-lg font-semibold truncate">
-                                Game ID: {playedGame.game_id}
-                            </p>
-                            <p class="text-sm text-surface-400">
-                                {STATUS_META[playedGame.status].label}
-                            </p>
-                        </div>
-
-                        <!-- STATS -->
-                        <div
-                            class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 text-sm"
+                        <!-- INFO (клик раскрывает) -->
+                        <button
+                            type="button"
+                            class="flex-1 min-w-0 text-left flex items-center gap-2"
+                            on:click={() => (expandedPlayedId = isExpanded ? null : playedGame.id)}
                         >
-                            <!-- Время игры -->
-                            <div
-                                class="flex items-center"
-                                style={playedGame.play_time
-                                    ? ""
-                                    : "visibility: hidden;"}
-                            >
-                                <span
-                                    class="inline-block w-1 h-4 rounded-full mr-2 flex-shrink-0"
-                                    style={`background:${STATUS_META[playedGame.status].color}`}
-                                ></span>
-                                <div class="min-w-0">
-                                    <p class="text-surface-400 text-xs">
-                                        Время игры
-                                    </p>
-                                    <p class="font-bold whitespace-nowrap">
-                                        {playedGame.play_time
-                                            ? formatPlayTime(
-                                                  playedGame.play_time,
-                                              )
-                                            : "-"}
-                                    </p>
-                                </div>
+                            <span
+                                class="text-surface-400 transition-transform"
+                                class:rotate-90={isExpanded}
+                            >▶</span>
+                            <div class="min-w-0">
+                                <p class="text-lg font-semibold truncate">
+                                    {gameTitle(playedGame.game_id)}
+                                </p>
+                                <p class="text-sm text-surface-400">
+                                    {STATUS_META[playedGame.status].label}
+                                </p>
                             </div>
+                        </button>
 
-                            <!-- Очки -->
-                            <div class="flex items-center">
-                                <span
-                                    class="inline-block w-1 h-4 rounded-full mr-2 flex-shrink-0"
-                                    style={`background:${STATUS_META[playedGame.status].color}`}
-                                ></span>
-                                <div class="min-w-0">
-                                    <p class="text-surface-400 text-xs">Очки</p>
-                                    <p
-                                        class="font-bold whitespace-nowrap"
-                                        style={`color:${playerColor}`}
-                                    >
-                                        {playedGame.points}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <!-- Рейтинг -->
-                            <div
-                                class="flex items-center"
-                                style={playedGame.rating
-                                    ? ""
-                                    : "visibility: hidden;"}
-                            >
-                                <span
-                                    class="inline-block w-1 h-4 rounded-full mr-2 flex-shrink-0"
-                                    style={`background:${STATUS_META[playedGame.status].color}`}
-                                ></span>
-                                <div class="min-w-0">
-                                    <p class="text-surface-400 text-xs">
-                                        Рейтинг
-                                    </p>
-                                    <p class="font-bold whitespace-nowrap">
-                                        {playedGame.rating
-                                            ? `${playedGame.rating}/100`
-                                            : "-"}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <!-- Дата старта -->
-                            <div class="flex items-center">
-                                <span
-                                    class="inline-block w-1 h-4 rounded-full mr-2 flex-shrink-0"
-                                    style={`background:${STATUS_META[playedGame.status].color}`}
-                                ></span>
-                                <div class="min-w-0">
-                                    <p class="text-surface-400 text-xs">
-                                        Дата старта
-                                    </p>
-                                    <p class="font-bold whitespace-nowrap">
-                                        {formatDate(playedGame.started_at)}
-                                    </p>
-                                </div>
-                            </div>
+                        <!-- Краткие статы в одной строке (всегда видны) -->
+                        <div class="flex flex-wrap items-center gap-4 text-sm text-surface-400">
+                            <span>Очки: <strong style={`color:${playerColor}`}>{playedGame.points}</strong></span>
+                            <span>Игра: {playedGame.play_time ? formatPlayTime(playedGame.play_time) : "0"}</span>
+                            <span>Рейтинг: {playedGame.rating != null ? `${playedGame.rating}/100` : "—"}</span>
+                            <span>Старт: {formatDate(playedGame.started_at)}</span>
                         </div>
 
                         <!-- ACTION -->
                         <div class="text-right flex-shrink-0">
                             {#if isOwnProfile}
                                 <button
+                                    type="button"
                                     class="btn btn-sm variant-ghost-surface whitespace-nowrap"
                                     on:click={() => handleEditPlayedGame(playedGame)}
                                 >
                                     Редактировать
                                 </button>
-                            {:else}
-                                <button
-                                    class="btn btn-sm variant-ghost-surface whitespace-nowrap"
-                                >
-                                    Подробнее
-                                </button>
                             {/if}
                         </div>
                     </div>
+
+                    <!-- Раскрытый блок: комментарий и доп. поля -->
+                    {#if isExpanded}
+                        <div class="mt-4 pt-4 border-t border-surface-600 space-y-2 text-sm">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div>
+                                    <span class="text-surface-400">Очки</span>
+                                    <p class="font-bold" style={`color:${playerColor}`}>{playedGame.points}</p>
+                                </div>
+                                <div>
+                                    <span class="text-surface-400">Время игры (play_time)</span>
+                                    <p class="font-bold">{playedGame.play_time ? formatPlayTime(playedGame.play_time) : "0"}</p>
+                                </div>
+                                <div>
+                                    <span class="text-surface-400">Рейтинг</span>
+                                    <p class="font-bold">{playedGame.rating != null ? `${playedGame.rating}/100` : "—"}</p>
+                                </div>
+                                <div>
+                                    <span class="text-surface-400">Дата старта (started_at)</span>
+                                    <p class="font-bold">{formatDate(playedGame.started_at)}</p>
+                                </div>
+                                {#if playedGame.completed_at}
+                                    <div>
+                                        <span class="text-surface-400">Дата завершения</span>
+                                        <p class="font-bold">{formatDate(playedGame.completed_at)}</p>
+                                    </div>
+                                {/if}
+                            </div>
+                            {#if playedGame.comment}
+                                <div>
+                                    <span class="text-surface-400">Комментарий</span>
+                                    <p class="mt-1 text-surface-200 whitespace-pre-wrap">{playedGame.comment}</p>
+                                </div>
+                            {/if}
+                        </div>
+                    {/if}
                 </div>
             {/each}
         </div>
@@ -355,4 +527,14 @@
 <ChangePasswordModal
     isOpen={showChangePasswordModal}
     onClose={() => (showChangePasswordModal = false)}
+    username={player?.username ?? ''}
+/>
+
+<EditPlayedGameModal
+    isOpen={!!editPlayedGame}
+    onClose={() => (editPlayedGame = null)}
+    playedGame={editPlayedGame}
+    playerId={player?.id ?? ''}
+    gameTitle={editPlayedGame ? gameTitle(editPlayedGame.game_id) : ''}
+    onSaved={refreshPlayedGamesAfterEdit}
 />
