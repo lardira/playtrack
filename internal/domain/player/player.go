@@ -96,7 +96,7 @@ type PlayedGame struct {
 	Status      PlayedGameStatus `json:"status"`
 	StartedAt   time.Time        `json:"started_at"`
 	CompletedAt *time.Time       `json:"completed_at"`
-	PlayTime    *time.Duration   `json:"play_time"`
+	PlayTime    *DurationString  `json:"play_time"`
 }
 
 func (pg *PlayedGame) Valid() error {
@@ -128,7 +128,7 @@ type PlayedGameUpdate struct {
 	Rating      *int
 	Status      *PlayedGameStatus
 	CompletedAt *time.Time
-	PlayTime    *time.Duration
+	PlayTime    *DurationString
 }
 
 func (p *PlayedGameUpdate) Valid() error {

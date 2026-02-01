@@ -256,7 +256,7 @@ func validPlayer() Player {
 func validPlayedGame() PlayedGame {
 	comment := testutil.Faker().Comment()
 	completedAt := time.Now()
-	playTime := 1 * time.Hour
+	playTime := DurationString{1 * time.Hour}
 	rating := testutil.Faker().IntRange(minRating, maxRating)
 
 	return PlayedGame{
@@ -291,7 +291,7 @@ func validPlayerUpdate() PlayerUpdate {
 func validPlayedGameUpdate() PlayedGameUpdate {
 	comment := testutil.Faker().Comment()
 	completedAt := time.Now()
-	playTime := 1 * time.Hour
+	playTime := DurationString{1 * time.Hour}
 	rating := testutil.Faker().IntRange(minRating, maxRating)
 	points := testutil.Faker().Int()
 	status := PlayedGameStatusCompleted

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -112,7 +113,7 @@ func (r *PGPlayedRepository) Update(ctx context.Context, game *PlayedGameUpdate)
 		updBuild = updBuild.Set("completed_at", *game.CompletedAt)
 	}
 	if game.PlayTime != nil {
-		updBuild = updBuild.Set("play_time", *game.PlayTime)
+		updBuild = updBuild.Set("play_time", game.PlayTime.Duration)
 	}
 
 	query, args, err := updBuild.Where(sq.Eq{"id": game.ID}).Suffix("RETURNING id").ToSql()
@@ -130,6 +131,7 @@ func (r *PGPlayedRepository) Update(ctx context.Context, game *PlayedGameUpdate)
 
 func playedGameFromRow(row pgx.Row) (*PlayedGame, error) {
 	var p PlayedGame
+	var ptime *time.Duration
 	err := row.Scan(
 		&p.ID,
 		&p.PlayerID,
@@ -140,10 +142,13 @@ func playedGameFromRow(row pgx.Row) (*PlayedGame, error) {
 		&p.Status,
 		&p.StartedAt,
 		&p.CompletedAt,
-		&p.PlayTime,
+		&ptime,
 	)
 	if err != nil {
 		return nil, err
+	}
+	if ptime != nil {
+		p.PlayTime = &DurationString{*ptime}
 	}
 	return &p, nil
 }

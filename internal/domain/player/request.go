@@ -1,6 +1,12 @@
 package player
 
-import "time"
+import (
+	"encoding/json"
+	"reflect"
+	"time"
+
+	"github.com/danielgtaylor/huma/v2"
+)
 
 type RequestUpdatePlayer struct {
 	PlayerID string `path:"id" format:"uuid"`
@@ -27,6 +33,35 @@ type RequestUpdatePlayedGame struct {
 		Rating      *int              `json:"rating" required:"false"`
 		Status      *PlayedGameStatus `json:"status" required:"false"`
 		CompletedAt *time.Time        `json:"completed_at" required:"false"`
-		PlayTime    *time.Duration    `json:"play_time" required:"false"`
+		PlayTime    *DurationString   `json:"play_time" required:"false"`
 	}
+}
+
+type DurationString struct {
+	time.Duration
+}
+
+func (d *DurationString) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	dur, err := time.ParseDuration(s)
+	if err != nil {
+		return err
+	}
+
+	d.Duration = dur
+	return nil
+}
+
+func (d DurationString) MarshalJSON() ([]byte, error) {
+	return json.Marshal(d.String())
+}
+
+func (d DurationString) Schema(r huma.Registry) *huma.Schema {
+	t := reflect.TypeFor[DurationString]()
+	r.RegisterTypeAlias(t, reflect.TypeFor[string]())
+	return r.Schema(t, true, "")
 }
