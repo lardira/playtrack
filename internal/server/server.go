@@ -44,8 +44,8 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 	healthChecker := tech.NewHealthChecker(dbpool, opts.CheckPollInterval, "postgres db")
 
 	mux := http.NewServeMux()
-	servMux := cors.New(cors.Options{
 
+	penis := cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
 		AllowedHeaders:   []string{"*"},
@@ -54,7 +54,7 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 
 	server := http.Server{
 		Addr:    fmt.Sprintf("%s:%s", opts.Host, opts.Port),
-		Handler: servMux,
+		Handler: penis,
 	}
 
 	config := huma.DefaultConfig("playtrack API", "1.0.0")
