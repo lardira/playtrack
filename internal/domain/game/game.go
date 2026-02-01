@@ -42,13 +42,16 @@ func (g *Game) Valid() error {
 	return nil
 }
 
+// CalculatePoints calculates and sets points in game
+//
+// Rules:
+//   - less than 2 hours = 1 point
+//   - more than 2 hours = each next 4 hours +1 point
 func (g *Game) CalculatePoints() {
-	// <=2 hours - 1 point
-	// >2 hours - each next 4 hours +1 point
 	if g.HoursToBeat <= 2 {
 		g.Points = 1
 	} else {
-		// 1 + (n - 2 + d-1) / d
+		// points = 1 + (n - 2 + d-1) / d
 		// e.g. 1 + (10 - 2 + 3) / 4 = 3 points
 		g.Points = 1 + (g.HoursToBeat+1)/4
 	}
