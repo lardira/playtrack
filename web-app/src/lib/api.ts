@@ -158,6 +158,7 @@ export interface UpdatePlayerRequest {
 	username?: string;
 	img?: string | null;
 	email?: string | null;
+	description?: string | null;
 }
 export const updatePlayer = async (playerId: string, data: UpdatePlayerRequest): Promise<{ id: string }> => {
 	const response = await api<{ Body?: { id: string }; body?: { id: string } }>(`/v1/players/${playerId}`, {
@@ -227,7 +228,7 @@ export const updatePlayedGame = async (
 			body: JSON.stringify(data)
 		}
 	);
-	const id = (response as any).Body?.id ?? (response as any).body?.id;
+	const id = (response as any).Body?.id ?? (response as any).body?.id ?? (response as any).id;
 	if (id == null) throw new Error('No id in response');
 	return { id };
 };

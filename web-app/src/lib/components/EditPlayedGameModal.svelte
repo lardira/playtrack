@@ -48,8 +48,9 @@
         rating = playedGame.rating ?? '';
         status = playedGame.status;
         if (playedGame.play_time) {
-            const h = playedGame.play_time.match(/(\d+)H/);
-            const m = playedGame.play_time.match(/(\d+)M/);
+            const s = playedGame.play_time;
+            const h = s.match(/(\d+)h/i);
+            const m = s.match(/(\d+)m/i);
             playTimeHours = h ? parseInt(h[1], 10) : 0;
             playTimeMinutes = m ? parseInt(m[1], 10) : 0;
         } else {
@@ -60,12 +61,13 @@
     }
     $: if (!playedGame) lastOpenedId = null;
 
+    /** Бэкенд ожидает формат Go: "34h30m", не ISO 8601 PT34H30M */
     function buildPlayTime(): string | null {
         if (playTimeHours === 0 && playTimeMinutes === 0) return null;
         const parts = [];
-        if (playTimeHours > 0) parts.push(`${playTimeHours}H`);
-        if (playTimeMinutes > 0) parts.push(`${playTimeMinutes}M`);
-        return parts.length ? `PT${parts.join('')}` : null;
+        if (playTimeHours > 0) parts.push(`${playTimeHours}h`);
+        if (playTimeMinutes > 0) parts.push(`${playTimeMinutes}m`);
+        return parts.length ? parts.join('') : null;
     }
 
     async function handleSubmit() {
@@ -80,14 +82,16 @@
         error = '';
 
         try {
-            await updatePlayedGame(playerId, playedGame.id, {
+            const payload: Parameters<typeof updatePlayedGame>[2] = {
                 comment: comment.trim() || null,
                 completed_at: completedAt ? `${completedAt}T00:00:00Z` : null,
                 play_time: buildPlayTime(),
-                points,
                 rating: ratingNum,
-                status,
-            });
+            };
+            if (status !== playedGame.status) {
+                payload.status = status;
+            }
+            await updatePlayedGame(playerId, playedGame.id, payload);
             onSaved();
             onClose();
         } catch (err: any) {
@@ -104,96 +108,91 @@
 
 <Modal isOpen={isOpen} title="Редактировать запись" onClose={handleClose}>
     {#if playedGame}
-        <p class="text-surface-400 text-sm mb-4">{gameTitle}</p>
-        <form on:submit|preventDefault={handleSubmit} class="space-y-4">
+        <p class="text-surface-400 text-sm mb-5 pb-3 border-b border-surface-600">{gameTitle}</p>
+        <form on:submit|preventDefault={handleSubmit} class="space-y-5">
             {#if error}
-                <div class="p-4 bg-red-500/20 border border-red-500 rounded-lg text-red-400 text-sm">
+                <div class="p-3 rounded-lg bg-red-500/15 border border-red-500/50 text-red-400 text-sm">
                     {error}
                 </div>
             {/if}
 
-            <div>
-                <label for="edit-comment" class="block text-sm font-medium mb-2">Комментарий</label>
+            <div class="space-y-1.5">
+                <label for="edit-comment" class="block text-sm font-medium text-surface-300">Комментарий</label>
                 <textarea
                     id="edit-comment"
-                    class="input w-full min-h-[80px]"
+                    class="input w-full min-h-[88px] px-3 py-2.5 rounded-lg border border-surface-600 bg-surface-800 focus:border-primary-500 focus:outline-none resize-y"
                     bind:value={comment}
                     disabled={loading}
                 />
             </div>
 
-            <div>
-                <label for="edit-status" class="block text-sm font-medium mb-2">Статус</label>
-                <select id="edit-status" class="input w-full" bind:value={status} disabled={loading}>
-                    {#each STATUS_OPTIONS as opt}
-                        <option value={opt.value}>{opt.label}</option>
-                    {/each}
-                </select>
-            </div>
-
-            <div>
-                <label for="edit-points" class="block text-sm font-medium mb-2">Очки</label>
-                <input
-                    id="edit-points"
-                    type="number"
-                    class="input w-full"
-                    bind:value={points}
-                    disabled={loading}
-                />
-            </div>
-
-            <div>
-                <label for="edit-rating" class="block text-sm font-medium mb-2">Рейтинг (0–100)</label>
-                <input
-                    id="edit-rating"
-                    type="number"
-                    min="0"
-                    max="100"
-                    class="input w-full"
-                    bind:value={rating}
-                    disabled={loading}
-                />
-            </div>
-
-            <div role="group" aria-labelledby="edit-play-time-label">
-                <span id="edit-play-time-label" class="block text-sm font-medium mb-2">Время игры (play_time)</span>
-                <div class="flex gap-2 items-center">
+            <div class="grid grid-cols-2 gap-x-4 gap-y-5">
+                <div class="space-y-1.5 pr-6 border-r-2 border-surface-600">
+                    <label for="edit-status" class="block text-sm font-medium text-surface-300">Статус</label>
+                    <select id="edit-status" class="input w-full px-3 py-2.5 rounded-lg border border-surface-600 bg-surface-800 focus:border-primary-500 focus:outline-none min-h-[2.75rem]" bind:value={status} disabled={loading}>
+                        {#each STATUS_OPTIONS as opt}
+                            <option value={opt.value}>{opt.label}</option>
+                        {/each}
+                    </select>
+                </div>
+                <div class="space-y-1.5 pl-2">
+                    <label for="edit-rating" class="block text-sm font-medium text-surface-300">Рейтинг (0–100)</label>
                     <input
-                        id="edit-play-time-h"
+                        id="edit-rating"
                         type="number"
                         min="0"
-                        class="input w-24"
-                        bind:value={playTimeHours}
+                        max="100"
+                        class="input w-full px-3 py-2.5 rounded-lg border border-surface-600 bg-surface-800 focus:border-primary-500 focus:outline-none min-h-[2.75rem]"
+                        bind:value={rating}
                         disabled={loading}
-                        aria-label="Часы"
                     />
-                    <span>ч</span>
-                    <input
-                        id="edit-play-time-m"
-                        type="number"
-                        min="0"
-                        max="59"
-                        class="input w-24"
-                        bind:value={playTimeMinutes}
-                        disabled={loading}
-                        aria-label="Минуты"
-                    />
-                    <span>мин</span>
+                </div>
+                <div role="group" class="space-y-1.5 pr-6 border-r-2 border-surface-600" aria-labelledby="edit-play-time-label">
+                    <span id="edit-play-time-label" class="block text-sm font-medium text-surface-300">Время игры</span>
+                    <div class="flex gap-2 items-center">
+                        <input
+                            id="edit-play-time-h"
+                            type="number"
+                            min="0"
+                            class="input w-20 px-3 py-2.5 rounded-lg border border-surface-600 bg-surface-800 focus:border-primary-500 focus:outline-none min-h-[2.75rem]"
+                            bind:value={playTimeHours}
+                            disabled={loading}
+                            aria-label="Часы"
+                        />
+                        <span class="text-surface-400 text-sm">ч</span>
+                        <input
+                            id="edit-play-time-m"
+                            type="number"
+                            min="0"
+                            max="59"
+                            class="input w-20 px-3 py-2.5 rounded-lg border border-surface-600 bg-surface-800 focus:border-primary-500 focus:outline-none min-h-[2.75rem]"
+                            bind:value={playTimeMinutes}
+                            disabled={loading}
+                            aria-label="Минуты"
+                        />
+                        <span class="text-surface-400 text-sm">мин</span>
+                    </div>
+                </div>
+                <div class="space-y-1.5 pl-2">
+                    <span class="block text-sm font-medium text-surface-400">Очки</span>
+                    <div class="rounded-lg border border-surface-600 bg-surface-700/50 text-surface-400 min-h-[2.75rem] px-3 py-2.5 flex items-center select-none text-sm" aria-readonly="true" role="textbox">{points}</div>
                 </div>
             </div>
 
-            <div>
-                <label for="edit-completed-at" class="block text-sm font-medium mb-2">Дата завершения (completed_at)</label>
-                <input
-                    id="edit-completed-at"
-                    type="date"
-                    class="input w-full"
-                    bind:value={completedAt}
-                    disabled={loading}
-                />
-            </div>
+            {#if status === 'completed' || status === 'dropped'}
+                <div class="space-y-1.5">
+                    <label for="edit-completed-at" class="block text-sm font-medium text-surface-300">Дата завершения (completed_at)</label>
+                    <input
+                        id="edit-completed-at"
+                        type="date"
+                        class="input w-full px-3 py-2.5 rounded-lg border border-surface-600 bg-surface-800 focus:border-primary-500 focus:outline-none min-h-[2.75rem]"
+                        bind:value={completedAt}
+                        disabled={loading}
+                    />
+                </div>
+            {/if}
 
-            <div class="flex gap-2 pt-2">
+            <div class="flex gap-3 pt-4 border-t border-surface-600">
                 <button
                     type="submit"
                     class="btn variant-filled-primary"
