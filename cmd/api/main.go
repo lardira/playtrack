@@ -39,7 +39,7 @@ func main() {
 
 	go func() {
 		defer close(serverErrChan)
-		serverErrChan <- server.Run()
+		serverErrChan <- server.Run(ctx)
 	}()
 
 	select {

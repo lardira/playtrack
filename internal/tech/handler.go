@@ -2,19 +2,17 @@ package tech
 
 import (
 	"context"
-	"log"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Handler struct {
-	pool *pgxpool.Pool
+	checker *HealthChecker
 }
 
-func NewHandler(pool *pgxpool.Pool) *Handler {
+func NewHandler(checker *HealthChecker) *Handler {
 	return &Handler{
-		pool: pool,
+		checker: checker,
 	}
 }
 
@@ -26,12 +24,9 @@ func (h *Handler) Register(api huma.API) {
 
 	huma.Get(grp, "/health", func(ctx context.Context, i *struct{}) (*HealthResponse, error) {
 		resp := HealthResponse{}
-		resp.Body.DB = true
-		resp.Body.Server = true
-
-		if err := h.pool.Ping(context.Background()); err != nil {
-			log.Printf("db ping: err %v", err)
-			resp.Body.Status.DB = false
+		resp.Body.Status = Status{
+			DB:     h.checker.Ok(),
+			Server: true,
 		}
 
 		return &resp, nil
