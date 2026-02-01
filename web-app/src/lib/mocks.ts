@@ -9,6 +9,13 @@ export const playersMock: Player[] = [
         created_at: '2024-01-01T00:00:00Z'
     },
     {
+        id: '0fe81b90-7e07-4c32-833d-25c3678afda9',
+        username: 'Memeladon',
+        img: null,
+        email: 'memeladon@mail.ru',
+        created_at: '2024-01-01T00:00:00Z'
+    },
+    {
         id: '550e8400-e29b-41d4-a716-446655440001',
         username: 'Bob',
         img: null,

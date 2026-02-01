@@ -1,20 +1,17 @@
 <script lang="ts">
     import { page } from "$app/stores";
     import type { Player, PlayedGame } from "../../../lib/types";
-    import { gamesPlayedMock, playersMock } from "../../../lib/mocks";
     import { user } from "../../../stores/user";
+    import { getPlayer, getPlayerPlayedGames } from "../../../lib/api";
     import ChangePasswordModal from "../../../lib/components/ChangePasswordModal.svelte";
 
     let player: Player | null = null;
     let loading = true;
     let currentUser: Player | null = null;
     let showChangePasswordModal = false;
+    let playedGames: PlayedGame[] = [];
 
     user.subscribe((u) => (currentUser = u));
-
-    const players: Player[] = playersMock;
-
-    let playedGames: PlayedGame[] = gamesPlayedMock;
 
     // Генерируем цвет на основе username для UI
     function getPlayerColor(username: string): string {
@@ -56,14 +53,35 @@
     };
 
     $: id = $page.params.id;
+
     $: if (id) {
-        player = players.find((p) => p.id === id) ?? null;
-        loading = false;
+        loading = true;
+        const requestedId = id;
+        Promise.all([getPlayer(id), getPlayerPlayedGames(id)])
+            .then(([p, games]) => {
+                if ($page.params.id === requestedId) {
+                    player = p;
+                    playedGames = games ?? [];
+                }
+            })
+            .catch(() => {
+                if ($page.params.id === requestedId) {
+                    player = null;
+                    playedGames = [];
+                }
+            })
+            .finally(() => {
+                if ($page.params.id === requestedId) loading = false;
+            });
     } else {
+        player = null;
+        playedGames = [];
         loading = false;
     }
 
     $: playerColor = player ? getPlayerColor(player.username) : "#f97316";
+    // sub из JWT = id игрока; на своей странице показываем «Редактировать»
+    $: isOwnProfile = !!currentUser && !!player && currentUser.id === player.id;
 
     // Функция для форматирования ISO duration в читаемый формат
     function formatPlayTime(isoDuration: string | null): string {
@@ -93,6 +111,13 @@
         const month = (date.getMonth() + 1).toString().padStart(2, "0");
         const year = date.getFullYear();
         return `${day}/${month}/${year}`;
+    }
+
+    // Редактирование записи сыгранной игры (PATCH /v1/players/{id}/played-games/{gameID})
+    function handleEditPlayedGame(playedGame: PlayedGame) {
+        if (!player) return;
+        // TODO: открыть модальное окно редактирования и вызвать updatePlayedGame после сохранения
+        console.log("Edit played game", player.id, playedGame.game_id, playedGame);
     }
 </script>
 
@@ -182,7 +207,7 @@
         <h2 class="text-2xl font-bold mb-6">🎮 Игры</h2>
 
         <div class="space-y-4">
-            {#each playedGames.filter((pg) => pg.player_id === player.id) as playedGame}
+            {#each playedGames as playedGame}
                 <div
                     class="group rounded-xl p-5 bg-surface shadow-md transition hover:shadow-xl"
                     style={`border-left: 6px solid ${STATUS_META[playedGame.status].color}`}
@@ -288,11 +313,20 @@
 
                         <!-- ACTION -->
                         <div class="text-right flex-shrink-0">
-                            <button
-                                class="btn btn-sm variant-ghost-surface whitespace-nowrap"
-                            >
-                                Подробнее
-                            </button>
+                            {#if isOwnProfile}
+                                <button
+                                    class="btn btn-sm variant-ghost-surface whitespace-nowrap"
+                                    on:click={() => handleEditPlayedGame(playedGame)}
+                                >
+                                    Редактировать
+                                </button>
+                            {:else}
+                                <button
+                                    class="btn btn-sm variant-ghost-surface whitespace-nowrap"
+                                >
+                                    Подробнее
+                                </button>
+                            {/if}
                         </div>
                     </div>
                 </div>

@@ -1,6 +1,9 @@
 <script lang="ts">
 	import "../app.postcss";
 	import { AppShell, AppBar } from "@skeletonlabs/skeleton";
+	import { goto } from "$app/navigation";
+	import { page } from "$app/stores";
+	import { browser } from "$app/environment";
 
 	// Floating UI for Popups
 	import {
@@ -17,13 +20,34 @@
 	import { user, token } from "../stores/user";
 	import { onMount } from "svelte";
 	import type { Player } from "../lib/types";
-	import { playersMock } from "../lib/mocks";
+	import { getPlayers } from "../lib/api";
 
 	let currentUser: Player | null = null;
+	let players: Player[] = [];
+
+	// Редирект на логин, если пользователь не залогинен
+	$: if (browser && $token === null && $page.url.pathname !== "/login") {
+		goto("/login");
+	}
+
 	onMount(() => {
 		user.subscribe((value) => (currentUser = value));
+		// Загружаем список игроков с API при наличии токена
+		if ($token) {
+			getPlayers()
+				.then((list) => (players = list))
+				.catch(() => (players = []));
+		}
+		token.subscribe((t) => {
+			if (t) {
+				getPlayers()
+					.then((list) => (players = list))
+					.catch(() => (players = []));
+			} else {
+				players = [];
+			}
+		});
 	});
-	let players: Player[] = playersMock;
 
 	// Генерируем цвет на основе username для UI
 	function getPlayerColor(username: string): string {
@@ -44,7 +68,7 @@
 	function logout() {
 		user.set(null);
 		token.set(null);
-		window.location.href = "/";
+		goto("/login");
 	}
 </script>
 
@@ -63,11 +87,6 @@
 			</svelte:fragment>
 			<svelte:fragment slot="trail">
 				{#if currentUser}
-					<a
-						href={`/users/${currentUser.id}`}
-						class="btn btn-sm variant-ghost-surface"
-						>{currentUser.username}</a
-					>
 					<button
 						class="btn btn-sm variant-ghost-surface"
 						on:click={logout}>Выйти</button

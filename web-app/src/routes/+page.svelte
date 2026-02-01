@@ -2,9 +2,12 @@
 	import { onMount } from "svelte";
 	import { user } from "../stores/user";
 	import type { Player } from "../lib/types";
-	import { playersMock } from "../lib/mocks";
+	import { getPlayers } from "../lib/api";
 
 	let currentUser: Player | null = null;
+	let leaderboard: Player[] = [];
+	let loading = true;
+	let loadError = "";
 
 	const placeStyles = [
 		{
@@ -27,9 +30,7 @@
 		},
 	];
 
-	let leaderboard: Player[] = playersMock;
-
-	// Генерируем цвет на основе username для UI
+	// Цвет по username для UI
 	function getPlayerColor(username: string): string {
 		const colors = [
 			"#f97316",
@@ -45,13 +46,23 @@
 		return colors[hash % colors.length];
 	}
 
-	// Для сортировки используем username, так как Score больше нет в модели
+	// Сортировка по username (данные с бэкенда GET /v1/players/)
 	$: sorted = [...leaderboard].sort((a, b) =>
 		a.username.localeCompare(b.username),
 	);
 
 	onMount(() => {
 		user.subscribe((value) => (currentUser = value));
+		getPlayers()
+			.then((list) => {
+				leaderboard = list ?? [];
+				loadError = "";
+			})
+			.catch((err) => {
+				loadError = err?.message ?? "Не удалось загрузить список игроков";
+				leaderboard = [];
+			})
+			.finally(() => (loading = false));
 	});
 </script>
 
@@ -90,6 +101,15 @@
 <section class="mt-14 max-w-5xl mx-auto">
 	<h2 class="text-3xl font-bold text-center mb-8">Лучшие игроки</h2>
 
+	{#if loading}
+		<div class="flex justify-center py-12">
+			<span class="loading loading-spinner loading-lg text-primary-500"></span>
+		</div>
+	{:else if loadError}
+		<div class="rounded-xl bg-surface border border-red-500/30 p-6 text-center text-red-400">
+			{loadError}
+		</div>
+	{:else}
 	<div class="grid gap-6 md:grid-cols-3">
 		{#each sorted.slice(0, 3) as player, index}
 			<a
@@ -133,12 +153,22 @@
 			</a>
 		{/each}
 	</div>
+	{/if}
 </section>
 
 <!-- LEADERBOARD -->
-<section class="mt-14 max-w-5xl mx-auto">
+<section id="leaderboard" class="mt-14 max-w-5xl mx-auto">
 	<h2 class="text-3xl font-bold text-center mb-6">🏆 Общая таблица</h2>
 
+	{#if loading}
+		<div class="flex justify-center py-12">
+			<span class="loading loading-spinner loading-lg text-primary-500"></span>
+		</div>
+	{:else if loadError}
+		<div class="rounded-xl bg-surface border border-red-500/30 p-6 text-center text-red-400">
+			{loadError}
+		</div>
+	{:else}
 	<div class="space-y-3">
 		{#each sorted as player, index}
 			<a
@@ -183,14 +213,15 @@
 			</a>
 		{/each}
 	</div>
+	{/if}
 </section>
 
 <!-- CTA -->
 <section class="text-center mt-14">
 	<p class="text-surface-300 mb-3">
-		Want to see detailed stats for each player?
+		Подробная статистика по каждому игроку — в профиле.
 	</p>
-	<a href="/players" class="btn variant-filled-secondary">
-		Browse all players
+	<a href="#leaderboard" class="btn variant-filled-secondary">
+		К таблице
 	</a>
 </section>

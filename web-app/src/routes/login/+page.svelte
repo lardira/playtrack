@@ -1,101 +1,113 @@
 <script lang="ts">
-    import { goto } from '$app/navigation';
-    import { login, register } from '../../lib/api';
-    import { user, token, loadUserFromToken } from '../../stores/user';
-    import { onMount } from 'svelte';
+    import { goto } from "$app/navigation";
+    import { tick } from "svelte";
+    import { login, register } from "../../lib/api";
+    import { user, token, loadUserFromToken } from "../../stores/user";
+    import { setTokenCookie } from "../../lib/cookies";
+    import { onMount } from "svelte";
 
     let isLogin = true;
     let loading = false;
-    let error = '';
+    let error = "";
 
     // Login form
-    let loginUsername = '';
-    let loginPassword = '';
+    let loginUsername = "";
+    let loginPassword = "";
 
     // Register form
-    let registerUsername = '';
-    let registerPassword = '';
-    let registerPasswordConfirm = '';
-    let registerEmail = '';
-    let registerImg = '';
+    let registerUsername = "";
+    let registerPassword = "";
+    let registerPasswordConfirm = "";
+    let registerEmail = "";
+    let registerImg = "";
 
     onMount(() => {
         // Если пользователь уже залогинен, перенаправляем на главную
         user.subscribe((u) => {
             if (u) {
-                goto('/');
+                goto("/");
             }
         });
     });
 
     async function handleLogin() {
         if (!loginUsername || !loginPassword) {
-            error = 'Заполните все поля';
+            error = "Заполните все поля";
             return;
         }
 
         loading = true;
-        error = '';
+        error = "";
 
         try {
             const response = await login({
                 username: loginUsername,
-                password: loginPassword
+                password: loginPassword,
             });
 
-            token.set(response.token);
+            const t = response.token;
+            setTokenCookie(t);
+            token.set(t);
             await loadUserFromToken();
-            goto('/');
+            await tick();
+            goto("/", { replaceState: true });
         } catch (err: any) {
-            error = err.message || 'Ошибка при входе';
+            error = err.message || "Ошибка при входе";
         } finally {
             loading = false;
         }
     }
 
     async function handleRegister() {
-        if (!registerUsername || !registerPassword || !registerPasswordConfirm) {
-            error = 'Заполните все обязательные поля';
+        if (
+            !registerUsername ||
+            !registerPassword ||
+            !registerPasswordConfirm
+        ) {
+            error = "Заполните все обязательные поля";
             return;
         }
 
         if (registerPassword !== registerPasswordConfirm) {
-            error = 'Пароли не совпадают';
+            error = "Пароли не совпадают";
             return;
         }
 
         if (registerPassword.length < 8) {
-            error = 'Пароль должен быть не менее 8 символов';
+            error = "Пароль должен быть не менее 8 символов";
             return;
         }
 
         if (registerUsername.length < 4) {
-            error = 'Имя пользователя должно быть не менее 4 символов';
+            error = "Имя пользователя должно быть не менее 4 символов";
             return;
         }
 
         loading = true;
-        error = '';
+        error = "";
 
         try {
             const response = await register({
                 username: registerUsername,
                 password: registerPassword,
                 email: registerEmail || null,
-                img: registerImg || null
+                img: registerImg || null,
             });
 
             // После регистрации автоматически логинимся
             const loginResponse = await login({
                 username: registerUsername,
-                password: registerPassword
+                password: registerPassword,
             });
 
-            token.set(loginResponse.token);
+            const t = loginResponse.token;
+            setTokenCookie(t);
+            token.set(t);
             await loadUserFromToken();
-            goto('/');
+            await tick();
+            goto("/", { replaceState: true });
         } catch (err: any) {
-            error = err.message || 'Ошибка при регистрации';
+            error = err.message || "Ошибка при регистрации";
         } finally {
             loading = false;
         }
@@ -103,14 +115,14 @@
 
     function toggleMode() {
         isLogin = !isLogin;
-        error = '';
-        loginUsername = '';
-        loginPassword = '';
-        registerUsername = '';
-        registerPassword = '';
-        registerPasswordConfirm = '';
-        registerEmail = '';
-        registerImg = '';
+        error = "";
+        loginUsername = "";
+        loginPassword = "";
+        registerUsername = "";
+        registerPassword = "";
+        registerPasswordConfirm = "";
+        registerEmail = "";
+        registerImg = "";
     }
 </script>
 
@@ -118,23 +130,25 @@
     <div class="w-full max-w-md">
         <div class="bg-surface rounded-2xl p-8 shadow-xl">
             <h1 class="text-3xl font-bold text-center mb-8">
-                {isLogin ? 'Вход' : 'Регистрация'}
+                {isLogin ? "Вход" : "Регистрация"}
             </h1>
 
             {#if error}
-                <div class="mb-4 p-4 bg-red-500/20 border border-red-500 rounded-lg text-red-400 text-sm">
+                <div
+                    class="mb-4 p-4 bg-red-500/20 border border-red-500 rounded-lg text-red-400 text-sm"
+                >
                     {error}
                 </div>
             {/if}
 
             {#if isLogin}
                 <!-- Login Form -->
-                <form
-                    on:submit|preventDefault={handleLogin}
-                    class="space-y-4"
-                >
+                <form on:submit|preventDefault={handleLogin} class="space-y-4">
                     <div>
-                        <label for="login-username" class="block text-sm font-medium mb-2">
+                        <label
+                            for="login-username"
+                            class="block text-sm font-medium mb-2"
+                        >
                             Имя пользователя
                         </label>
                         <input
@@ -150,7 +164,10 @@
                     </div>
 
                     <div>
-                        <label for="login-password" class="block text-sm font-medium mb-2">
+                        <label
+                            for="login-password"
+                            class="block text-sm font-medium mb-2"
+                        >
                             Пароль
                         </label>
                         <input
@@ -170,7 +187,7 @@
                         class="btn w-full variant-filled-primary"
                         disabled={loading}
                     >
-                        {loading ? 'Вход...' : 'Войти'}
+                        {loading ? "Вход..." : "Войти"}
                     </button>
                 </form>
             {:else}
@@ -180,7 +197,10 @@
                     class="space-y-4"
                 >
                     <div>
-                        <label for="register-username" class="block text-sm font-medium mb-2">
+                        <label
+                            for="register-username"
+                            class="block text-sm font-medium mb-2"
+                        >
                             Имя пользователя *
                         </label>
                         <input
@@ -196,7 +216,10 @@
                     </div>
 
                     <div>
-                        <label for="register-email" class="block text-sm font-medium mb-2">
+                        <label
+                            for="register-email"
+                            class="block text-sm font-medium mb-2"
+                        >
                             Email
                         </label>
                         <input
@@ -210,7 +233,10 @@
                     </div>
 
                     <div>
-                        <label for="register-img" class="block text-sm font-medium mb-2">
+                        <label
+                            for="register-img"
+                            class="block text-sm font-medium mb-2"
+                        >
                             URL изображения
                         </label>
                         <input
@@ -224,7 +250,10 @@
                     </div>
 
                     <div>
-                        <label for="register-password" class="block text-sm font-medium mb-2">
+                        <label
+                            for="register-password"
+                            class="block text-sm font-medium mb-2"
+                        >
                             Пароль *
                         </label>
                         <input
@@ -240,7 +269,10 @@
                     </div>
 
                     <div>
-                        <label for="register-password-confirm" class="block text-sm font-medium mb-2">
+                        <label
+                            for="register-password-confirm"
+                            class="block text-sm font-medium mb-2"
+                        >
                             Подтвердите пароль *
                         </label>
                         <input
@@ -260,7 +292,7 @@
                         class="btn w-full variant-filled-primary"
                         disabled={loading}
                     >
-                        {loading ? 'Регистрация...' : 'Зарегистрироваться'}
+                        {loading ? "Регистрация..." : "Зарегистрироваться"}
                     </button>
                 </form>
             {/if}
@@ -273,17 +305,19 @@
                     disabled={loading}
                 >
                     {isLogin
-                        ? 'Нет аккаунта? Зарегистрироваться'
-                        : 'Уже есть аккаунт? Войти'}
+                        ? "Нет аккаунта? Зарегистрироваться"
+                        : "Уже есть аккаунт? Войти"}
                 </button>
             </div>
 
             <div class="mt-4 text-center">
-                <a href="/" class="text-surface-400 hover:text-surface-300 text-sm">
+                <a
+                    href="/"
+                    class="text-surface-400 hover:text-surface-300 text-sm"
+                >
                     ← На главную
                 </a>
             </div>
         </div>
     </div>
 </div>
-
