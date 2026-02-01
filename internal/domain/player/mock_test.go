@@ -395,8 +395,8 @@ func (_c *MockPlayedGameRepository_FindAll_Call) RunAndReturn(run func(ctx conte
 	return _c
 }
 
-// FindLast provides a mock function for the type MockPlayedGameRepository
-func (_mock *MockPlayedGameRepository) FindLast(ctx context.Context, playerID string) (*PlayedGame, error) {
+// FindLastNotReroll provides a mock function for the type MockPlayedGameRepository
+func (_mock *MockPlayedGameRepository) FindLastNotReroll(ctx context.Context, playerID string) (*PlayedGame, error) {
 	ret := _mock.Called(ctx, playerID)
 
 	if len(ret) == 0 {

@@ -22,7 +22,7 @@ type PlayerRepository interface {
 type PlayedGameRepository interface {
 	FindAll(ctx context.Context, playerID string) ([]PlayedGame, error)
 	FindOne(ctx context.Context, playerID string, id int) (*PlayedGame, error)
-	FindLast(ctx context.Context, playerID string) (*PlayedGame, error)
+	FindLastNotReroll(ctx context.Context, playerID string) (*PlayedGame, error)
 	Insert(ctx context.Context, player *PlayedGame) (int, error)
 	Update(ctx context.Context, game *PlayedGameUpdate) (int, error)
 }
@@ -208,18 +208,19 @@ func (h *Handler) UpdatePlayedGame(
 	}
 
 	if nGame.Status != nil {
-		status := *nGame.Status
-		if err := playedGame.StatusNextValid(status); err != nil {
+		newStatus := *nGame.Status
+		if err := playedGame.StatusNextValid(newStatus); err != nil {
 			return nil, huma.Error400BadRequest("entity is not valid", err)
 		}
 
 		newPoints := 0
 		now := time.Now()
-		switch status {
+
+		switch newStatus {
 		case PlayedGameStatusDropped:
 			newPoints = -1
 
-			prevGame, err := h.playedGameRepository.FindLast(ctx, i.PlayerID)
+			prevGame, err := h.playedGameRepository.FindLastNotReroll(ctx, i.PlayerID)
 			if err != nil && !errors.Is(err, ErrPlayedGameNotFound) {
 				return nil, huma.Error400BadRequest("game played find", err)
 			}

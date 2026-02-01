@@ -259,7 +259,7 @@ func TestUpdatePlayedGame_ConsecutiveDrop(t *testing.T) {
 		Return(&played[1], nil)
 
 	playedGameRepository.
-		On("FindLast", ctx, player.ID).
+		On("FindLastNotReroll", ctx, player.ID).
 		Once().
 		Return(&played[0], nil)
 
