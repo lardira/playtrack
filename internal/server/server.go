@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
@@ -19,17 +20,19 @@ import (
 )
 
 type Options struct {
-	Host        string
-	Port        string
-	DatabaseURL string
-	JWTSecret   string
+	Host              string
+	Port              string
+	DatabaseURL       string
+	JWTSecret         string
+	CheckPollInterval time.Duration
 }
 
 type Server struct {
 	Options
 
-	server *http.Server
-	db     *pgxpool.Pool
+	server        *http.Server
+	db            *pgxpool.Pool
+	healthChecker *tech.HealthChecker
 }
 
 func New(ctx context.Context, opts Options) (*Server, error) {
@@ -37,6 +40,8 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	healthChecker := tech.NewHealthChecker(dbpool, opts.CheckPollInterval, "postgres db")
 
 	mux := http.NewServeMux()
 	servMux := cors.New(cors.Options{
@@ -65,7 +70,7 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 	playerRepository := player.NewPGRepository(dbpool)
 	playedGameRepository := player.NewPGPlayedRepository(dbpool)
 
-	techHandler := tech.NewHandler(dbpool)
+	techHandler := tech.NewHandler(healthChecker)
 	gameHandler := game.NewHandler(gameRepository)
 	playerHandler := player.NewHandler(playerRepository, gameRepository, playedGameRepository)
 	authHandler := auth.NewHandler(opts.JWTSecret, playerRepository)
@@ -76,14 +81,16 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 	authHandler.Register(unsecApi)
 
 	return &Server{
-		Options: opts,
-		server:  &server,
-		db:      dbpool,
+		Options:       opts,
+		server:        &server,
+		db:            dbpool,
+		healthChecker: healthChecker,
 	}, nil
 }
 
-func (s *Server) Run() error {
+func (s *Server) Run(ctx context.Context) error {
 	s.prompt()
+	go s.healthChecker.Check(ctx)
 	return s.server.ListenAndServe()
 }
 

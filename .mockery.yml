@@ -35,3 +35,9 @@ packages:
     interfaces:
       PlayerRepository: 
         config: {}
+  github.com/lardira/playtrack/internal/tech:
+    config:
+      all: false
+    interfaces:
+      Pinger: 
+        config: {}
