@@ -1,6 +1,8 @@
 import type { Player, LeaderboardPlayer, PlayedGame, Game, AuthResponse } from './types';
 import { playersMock, leaderboardMock, gamesMock, gamesPlayedMock } from './mocks.js';
 import { browser } from '$app/environment';
+import { getTokenFromCookie } from './cookies';
+import { getCurrentToken } from './tokenHolder';
 
 const USE_MOCKS = false;
 
@@ -15,7 +17,7 @@ export async function api<T>(url: string, options: RequestInit = {}): Promise<T>
             default: return {} as any;
         }
     } else {
-        const token = browser ? localStorage.getItem('token') : null;
+        const token = browser ? (getTokenFromCookie() ?? getCurrentToken()) : null;
         const headers: Record<string, string> = { 'Content-Type': 'application/json', 'mode': 'cors', 'credentials': 'include' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -87,32 +89,76 @@ export interface PlayerResponse {
     item: Player;
 }
 
-// Auth functions
+// Backend returns { Body: { token } } or { body: { token } } depending on serialization
+function unwrapBody<T>(res: { Body?: T; body?: T }): T | undefined {
+	return res.Body ?? res.body;
+}
+
+// Бэкенд возвращает { "$schema": "...", "token": "..." }
 export const login = async (data: LoginRequest): Promise<LoginResponse> => {
-    const response = await api<{ body: { token: string } }>('/pub/auth/login', {
+    const response = await api<{ token?: string; Token?: string }>('/pub/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ body: data })
+        body: JSON.stringify(data)
     });
-    return { token: response.body.token };
+    const token = response.token ?? response.Token;
+    if (!token || typeof token !== 'string') throw new Error('No token in response');
+    return { token };
 };
 
 export const register = async (data: RegisterRequest): Promise<RegisterResponse> => {
-    const response = await api<{ body: { id: string } }>('/pub/auth/register', {
+    const response = await api<{ Body?: { id: string }; body?: { id: string }; id?: string }>('/pub/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ body: data })
+        body: JSON.stringify(data)
     });
-    return { id: response.body.id };
+    const id = unwrapBody(response)?.id ?? response.id;
+    if (!id) throw new Error('No id in response');
+    return { id };
 };
 
 export const setPassword = async (data: SetPasswordRequest): Promise<SetPasswordResponse> => {
-    const response = await api<{ body: { id: string } }>('/pub/set-password', {
+    const response = await api<{ Body?: { id: string }; body?: { id: string }; id?: string }>('/pub/set-password', {
         method: 'PATCH',
-        body: JSON.stringify({ body: data })
+        body: JSON.stringify(data)
     });
-    return { id: response.body.id };
+    const id = unwrapBody(response)?.id ?? response.id;
+    if (!id) throw new Error('No id in response');
+    return { id };
 };
 
-// Player API
-export const getPlayers = () => api<{ body: { items: Player[] } }>('/v1/players/').then(r => r.body.items);
-export const getPlayer = (id: string) => api<{ body: { item: Player } }>(`/v1/players/${id}`).then(r => r.body.item);
+// Player API — бэкенд может вернуть { Body: { item/items } }, { body: { ... } } или { item/items } на верхнем уровне
+function getItems<T>(r: { Body?: { items: T[] }; body?: { items: T[] }; items?: T[] }): T[] {
+	const wrap = r.Body ?? r.body;
+	return wrap?.items ?? r.items ?? [];
+}
+function getItem<T>(r: { Body?: { item: T }; body?: { item: T }; item?: T }): T {
+	const wrap = r.Body ?? r.body;
+	const item = wrap?.item ?? (r as { item?: T }).item;
+	if (item == null) throw new Error('No item in response');
+	return item;
+}
+
+export const getPlayers = () =>
+	api<{ Body?: { items: Player[] }; body?: { items: Player[] }; items?: Player[] }>('/v1/players/').then(getItems);
+export const getPlayer = (id: string) =>
+	api<{ Body?: { item: Player }; body?: { item: Player }; item?: Player }>(`/v1/players/${id}`).then(getItem);
+export const getPlayerPlayedGames = (playerId: string) =>
+	api<{ Body?: { items: PlayedGame[] }; body?: { items: PlayedGame[] }; items?: PlayedGame[] }>(
+		`/v1/players/${playerId}/played-games`
+	).then(getItems);
+
+export interface UpdatePlayerRequest {
+	username?: string;
+	img?: string | null;
+	email?: string | null;
+}
+export const updatePlayer = async (playerId: string, data: UpdatePlayerRequest): Promise<{ id: string }> => {
+	const response = await api<{ Body?: { id: string }; body?: { id: string } }>(`/v1/players/${playerId}`, {
+		method: 'PATCH',
+		body: JSON.stringify(data)
+	});
+	const id = (response as any).Body?.id ?? (response as any).body?.id;
+	if (!id) throw new Error('No id in response');
+	return { id };
+};
+
 export const getLeaderboard = () => api<LeaderboardPlayer[]>('/v1/players/leaderboard');

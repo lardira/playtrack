@@ -2,6 +2,8 @@ import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import type { Player } from '../lib/types';
 import { getPlayer } from '../lib/api';
+import { getTokenFromCookie, setTokenCookie, clearTokenCookie } from '../lib/cookies';
+import { setCurrentToken } from '../lib/tokenHolder';
 
 const getStoredUser = (): Player | null => {
     if (!browser) return null;
@@ -11,7 +13,7 @@ const getStoredUser = (): Player | null => {
 
 const getStoredToken = (): string | null => {
     if (!browser) return null;
-    return localStorage.getItem('token');
+    return getTokenFromCookie();
 };
 
 export const user = writable<Player | null>(getStoredUser());
@@ -42,7 +44,7 @@ export async function loadUserFromToken(): Promise<void> {
         user.set(null);
         token.set(null);
         if (browser) {
-            localStorage.removeItem('token');
+            clearTokenCookie();
             localStorage.removeItem('user');
         }
         return;
@@ -59,25 +61,26 @@ export async function loadUserFromToken(): Promise<void> {
         user.set(null);
         token.set(null);
         if (browser) {
-            localStorage.removeItem('token');
+            clearTokenCookie();
             localStorage.removeItem('user');
         }
     }
 }
 
 if (browser) {
-    // Загружаем пользователя при инициализации, если есть токен
     const currentToken = getStoredToken();
+    setCurrentToken(currentToken);
     if (currentToken) {
         loadUserFromToken();
     }
 
-    // Синхронизируем токен с localStorage
+    // Синхронизируем токен с куки и с запасным хранилищем (для api без циклического импорта)
     token.subscribe((value) => {
+        setCurrentToken(value);
         if (value) {
-            localStorage.setItem('token', value);
+            setTokenCookie(value);
         } else {
-            localStorage.removeItem('token');
+            clearTokenCookie();
         }
     });
 
