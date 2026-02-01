@@ -1,6 +1,10 @@
 package player
 
-import "time"
+import (
+	"time"
+
+	"github.com/lardira/playtrack/internal/pkg/types"
+)
 
 type RequestUpdatePlayer struct {
 	PlayerID string `path:"id" format:"uuid"`
@@ -22,11 +26,11 @@ type RequestUpdatePlayedGame struct {
 	PlayerID string `path:"id" format:"uuid"`
 	GameID   int    `path:"gameID"`
 	Body     struct {
-		Points      *int              `json:"points" required:"false"`
-		Comment     *string           `json:"comment" required:"false"`
-		Rating      *int              `json:"rating" required:"false"`
-		Status      *PlayedGameStatus `json:"status" required:"false"`
-		CompletedAt *time.Time        `json:"completed_at" required:"false"`
-		PlayTime    *time.Duration    `json:"play_time" required:"false"`
+		Points      *int                  `json:"points" required:"false"`
+		Comment     *string               `json:"comment" required:"false"`
+		Rating      *int                  `json:"rating" required:"false"`
+		Status      *PlayedGameStatus     `json:"status" required:"false"`
+		CompletedAt *time.Time            `json:"completed_at" required:"false"`
+		PlayTime    *types.DurationString `json:"play_time" required:"false"`
 	}
 }
