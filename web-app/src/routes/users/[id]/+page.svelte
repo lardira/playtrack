@@ -11,12 +11,14 @@
         updatePlayedGame,
     } from "../../../lib/api";
     import ChangePasswordModal from "../../../lib/components/ChangePasswordModal.svelte";
+    import EditDescriptionModal from "../../../lib/components/EditDescriptionModal.svelte";
     import EditPlayedGameModal from "../../../lib/components/EditPlayedGameModal.svelte";
 
     let player: Player | null = null;
     let loading = true;
     let currentUser: Player | null = null;
     let showChangePasswordModal = false;
+    let showEditDescriptionModal = false;
     let editPlayedGame: PlayedGame | null = null;
     let expandedPlayedId: number | null = null;
     let playedGames: PlayedGame[] = [];
@@ -100,13 +102,23 @@
     // sub из JWT = id игрока; на своей странице показываем «Редактировать»
     $: isOwnProfile = !!currentUser && !!player && currentUser.id === player.id;
 
-    // Функция для форматирования ISO duration в читаемый формат
-    function formatPlayTime(isoDuration: string | null): string {
-        if (!isoDuration) return "0h";
+    // Динамическая статистика из playedGames
+    $: totalGames = playedGames.length;
+    $: totalPoints = playedGames.reduce((sum, pg) => sum + pg.points, 0);
+    $: gamesExcludingReroll = playedGames.filter((pg) => pg.status !== "rerolled");
+    $: completedCount = playedGames.filter((pg) => pg.status === "completed").length;
+    $: completedPercent =
+        gamesExcludingReroll.length > 0
+            ? Math.round((completedCount / gamesExcludingReroll.length) * 100)
+            : 0;
 
-        // Парсим ISO 8601 duration (PT45H30M, PT2H15M и т.д.)
-        const hoursMatch = isoDuration.match(/(\d+)H/);
-        const minutesMatch = isoDuration.match(/(\d+)M/);
+    /** Парсит duration из API: Go-формат "34h30m0s" или ISO 8601 "PT45H30M" */
+    function formatPlayTime(duration: string | null): string {
+        if (!duration) return "0h";
+
+        const s = duration;
+        const hoursMatch = s.match(/(\d+)h/i);
+        const minutesMatch = s.match(/(\d+)m/i);
 
         const hours = hoursMatch ? parseInt(hoursMatch[1], 10) : 0;
         const minutes = minutesMatch ? parseInt(minutesMatch[1], 10) : 0;
@@ -139,6 +151,12 @@
         if (!player) return;
         const list = await getPlayerPlayedGames(player.id);
         playedGames = list ?? playedGames;
+    }
+
+    async function refreshPlayerAfterDescriptionSave() {
+        if (!id) return;
+        const p = await getPlayer(id);
+        if (p) player = p;
     }
 
     // --- Создание новой записи (только на своей странице) ---
@@ -181,11 +199,23 @@
         newRecordUrl = game.url ?? "";
     }
 
+    /** Статусы, при которых нельзя добавить новую запись — у игрока может быть только одна незавершённая игра */
+    const NONTERMINATED_STATUSES = ["added", "in_progress"];
+
     async function submitNewRecord() {
         if (!player || player.id !== currentUser?.id) return;
         const title = newRecordTitle.trim();
         if (!title) {
             createError = "Введите название игры";
+            return;
+        }
+
+        const hasNonTerminated = playedGames.some((pg) =>
+            NONTERMINATED_STATUSES.includes(pg.status),
+        );
+        if (hasNonTerminated) {
+            createError =
+                "Сначала завершите текущую игру (Пройдено / Дроп / Реролл) или измените её статус в карточке выше.";
             return;
         }
 
@@ -217,7 +247,13 @@
 
             cancelNewRow();
         } catch (err: any) {
-            createError = err?.message ?? "Не удалось создать запись";
+            const msg = err?.message ?? "";
+            if (msg.includes("nonterminated")) {
+                createError =
+                    "У вас уже есть игра в статусе «В процессе» или «Добавлено». Сначала завершите её (Пройдено / Дроп / Реролл) через кнопку «Редактировать».";
+            } else {
+                createError = msg || "Не удалось создать запись";
+            }
         } finally {
             createLoading = false;
         }
@@ -245,25 +281,25 @@
             style={`background:${playerColor}33`}
         ></div>
 
-        <div class="flex flex-col md:flex-row md:items-center gap-6">
-            <!-- AVATAR -->
+        <div class="flex flex-col md:flex-row md:items-start gap-6">
+            <!-- AVATAR (увеличенная) -->
             {#if player.img}
                 <img
                     src={player.img}
                     alt={player.username}
-                    class="w-24 h-24 rounded-full object-cover"
+                    class="w-32 h-32 md:w-36 md:h-36 rounded-full object-cover flex-shrink-0"
                 />
             {:else}
                 <div
-                    class="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold"
+                    class="w-32 h-32 md:w-36 md:h-36 rounded-full flex items-center justify-center text-4xl font-bold flex-shrink-0"
                     style={`background:${playerColor}; color:#000`}
                 >
                     {player.username[0].toUpperCase()}
                 </div>
             {/if}
 
-            <!-- INFO -->
-            <div class="flex-1">
+            <!-- INFO + ОПИСАНИЕ -->
+            <div class="flex-1 min-w-0">
                 <h1
                     class="text-3xl font-extrabold"
                     style={`color:${playerColor}`}
@@ -275,10 +311,24 @@
                         {player.email}
                     </p>
                 {/if}
+                {#if player.description}
+                    <p class="text-surface-300 mt-3 text-sm leading-relaxed whitespace-pre-wrap">{player.description}</p>
+                {:else if isOwnProfile}
+                    <p class="text-surface-500 mt-3 text-sm italic">Описание не задано. Однажды оно появится здесь..</p>
+                {/if}
+                {#if isOwnProfile}
+                    <button
+                        type="button"
+                        class="btn btn-sm variant-ghost-surface mt-2"
+                        on:click={() => (showEditDescriptionModal = true)}
+                    >
+                        {player.description ? 'Редактировать описание' : 'Добавить описание'}
+                    </button>
+                {/if}
             </div>
 
             <!-- CREATED AT -->
-            <div class="text-right">
+            <div class="text-right flex-shrink-0">
                 <p class="text-sm text-surface-400">Зарегистрирован</p>
                 <p class="text-lg font-bold">
                     {new Date(player.created_at).toLocaleDateString()}
@@ -291,17 +341,17 @@
     <section class="max-w-5xl mx-auto mt-10 grid gap-6 md:grid-cols-3">
         <div class="card p-6 bg-surface shadow-md rounded-xl">
             <p class="text-sm text-surface-400">Всего сыграно игр</p>
-            <p class="text-3xl font-bold">128</p>
+            <p class="text-3xl font-bold">{totalGames}</p>
         </div>
 
         <div class="card p-6 bg-surface shadow-md rounded-xl">
             <p class="text-sm text-surface-400">Очки</p>
-            <p class="text-3xl font-bold">42</p>
+            <p class="text-3xl font-bold">{totalPoints}</p>
         </div>
 
         <div class="card p-6 bg-surface shadow-md rounded-xl">
             <p class="text-sm text-surface-400">Процент пройденных игр</p>
-            <p class="text-3xl font-bold">61%</p>
+            <p class="text-3xl font-bold">{completedPercent}%</p>
         </div>
     </section>
 
@@ -537,4 +587,12 @@
     playerId={player?.id ?? ''}
     gameTitle={editPlayedGame ? gameTitle(editPlayedGame.game_id) : ''}
     onSaved={refreshPlayedGamesAfterEdit}
+/>
+
+<EditDescriptionModal
+    isOpen={showEditDescriptionModal}
+    onClose={() => (showEditDescriptionModal = false)}
+    playerId={player?.id ?? ''}
+    currentDescription={player?.description ?? ''}
+    onSaved={refreshPlayerAfterDescriptionSave}
 />

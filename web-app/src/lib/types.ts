@@ -3,6 +3,7 @@ export interface Player {
     username: string;
     img: string | null;
     email: string | null;
+    description: string | null;
     created_at: string; // ISO date string
 }
 
