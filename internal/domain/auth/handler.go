@@ -105,6 +105,7 @@ func (h *Handler) RegisterPlayer(
 		return nil, huma.Error500InternalServerError("create", err)
 	}
 
+	log.Printf("player %v created", id)
 	resp := domain.ResponseID[string]{}
 	resp.Body.ID = id
 	return &resp, nil
@@ -141,6 +142,7 @@ func (h *Handler) SetPassword(
 		return nil, huma.Error500InternalServerError("create", err)
 	}
 
+	log.Printf("player %v updated (pass)", id)
 	resp := domain.ResponseID[string]{}
 	resp.Body.ID = id
 	return &resp, nil

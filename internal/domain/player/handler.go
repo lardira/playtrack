@@ -117,6 +117,7 @@ func (h *Handler) Update(
 		return nil, huma.Error500InternalServerError("update", err)
 	}
 
+	log.Printf("player %v updated", id)
 	resp := domain.ResponseID[string]{}
 	resp.Body.ID = id
 	return &resp, nil
@@ -187,6 +188,7 @@ func (h *Handler) CreatePlayedGame(
 		return nil, huma.Error500InternalServerError("create", err)
 	}
 
+	log.Printf("played game %v created", id)
 	resp := domain.ResponseID[int]{}
 	resp.Body.ID = id
 	return &resp, nil
@@ -260,6 +262,7 @@ func (h *Handler) UpdatePlayedGame(
 		return nil, huma.Error500InternalServerError("update", err)
 	}
 
+	log.Printf("played game %v updated", id)
 	resp := domain.ResponseID[int]{}
 	resp.Body.ID = id
 	return &resp, nil
