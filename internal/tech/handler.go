@@ -2,6 +2,7 @@ package tech
 
 import (
 	"context"
+	"log"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -29,6 +30,7 @@ func (h *Handler) Register(api huma.API) {
 		resp.Body.Server = true
 
 		if err := h.pool.Ping(context.Background()); err != nil {
+			log.Printf("db ping: err %v", err)
 			resp.Body.Status.DB = false
 		}
 

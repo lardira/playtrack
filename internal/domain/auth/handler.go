@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -57,14 +58,17 @@ func (h *Handler) Register(api huma.API) {
 func (h *Handler) Login(ctx context.Context, i *RequestLoginPlayer) (*ResponseLoginPlayer, error) {
 	found, err := h.playerRepository.FindOneByUsername(ctx, i.Body.Username)
 	if err != nil {
+		log.Printf("login player find one: %v", err)
 		return nil, huma.Error401Unauthorized("username or password is incorrect")
 	}
 	if !password.CompareHash(i.Body.Password, found.Password) {
+		log.Printf("login compare hash: %v", err)
 		return nil, huma.Error401Unauthorized("username or password is incorrect")
 	}
 
 	token, err := h.issueToken(found.ID)
 	if err != nil {
+		log.Printf("login issue token: %v", err)
 		return nil, huma.Error500InternalServerError("could not issue token", err)
 	}
 
@@ -84,20 +88,24 @@ func (h *Handler) RegisterPlayer(
 		Password: i.Body.Password,
 	}
 	if err := nPlayer.Valid(); err != nil {
+		log.Printf("register player not valid: %v", err)
 		return nil, huma.Error400BadRequest("entity is not valid", err)
 	}
 
 	hashedPassword, err := password.Hash(nPlayer.Password)
 	if err != nil {
+		log.Printf("register pass hash: %v", err)
 		return nil, huma.Error500InternalServerError("could not create player")
 	}
 	nPlayer.Password = hashedPassword
 
 	id, err := h.playerRepository.Insert(ctx, &nPlayer)
 	if err != nil {
+		log.Printf("register insert player: %v", err)
 		return nil, huma.Error500InternalServerError("create", err)
 	}
 
+	log.Printf("player %v created", id)
 	resp := domain.ResponseID[string]{}
 	resp.Body.ID = id
 	return &resp, nil
@@ -117,20 +125,24 @@ func (h *Handler) SetPassword(
 		Password: &i.Body.Password,
 	}
 	if err := nPlayer.Valid(); err != nil {
+		log.Printf("set pass not valid: %v", err)
 		return nil, huma.Error400BadRequest("entity is not valid", err)
 	}
 
 	hashedPassword, err := password.Hash(i.Body.Password)
 	if err != nil {
+		log.Printf("set pass hash: %v", err)
 		return nil, huma.Error500InternalServerError("could not update player")
 	}
 	nPlayer.Password = &hashedPassword
 
 	id, err := h.playerRepository.Update(ctx, &nPlayer)
 	if err != nil {
+		log.Printf("set pass player update: %v", err)
 		return nil, huma.Error500InternalServerError("create", err)
 	}
 
+	log.Printf("player %v updated (pass)", id)
 	resp := domain.ResponseID[string]{}
 	resp.Body.ID = id
 	return &resp, nil

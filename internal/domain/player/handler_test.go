@@ -86,6 +86,29 @@ func TestUpdate(t *testing.T) {
 	assert.Equal(t, player.ID, resp.Body.ID)
 }
 
+func TestUpdate_OtherPlayer(t *testing.T) {
+	player := validPlayer()
+	otherPlayer := validPlayer()
+	ctx := ctxutil.SetPlayerID(t.Context(), otherPlayer.ID)
+
+	playerRepository := NewMockPlayerRepository(t)
+	gameRepository := NewMockGameRepository(t)
+	playedGameRepository := NewMockPlayedGameRepository(t)
+
+	handler := NewHandler(playerRepository, gameRepository, playedGameRepository)
+
+	playerRepository.AssertNotCalled(t, "Update")
+
+	req := RequestUpdatePlayer{}
+	req.PlayerID = player.ID
+	req.Body.Username = &player.Username
+	req.Body.Img = player.Img
+	req.Body.Email = player.Email
+
+	_, err := handler.Update(ctx, &req)
+	assert.Error(t, err)
+}
+
 func TestGetAllPlayedGames(t *testing.T) {
 	playerID := uuid.NewString()
 	games := make([]PlayedGame, 2)
@@ -198,6 +221,31 @@ func TestCreatePlayedGame(t *testing.T) {
 	assert.Equal(t, played.ID, resp.Body.ID)
 }
 
+func TestCreatePlayed_OtherPlayer(t *testing.T) {
+	player := validPlayer()
+	otherPlayer := validPlayer()
+
+	ctx := ctxutil.SetPlayerID(t.Context(), otherPlayer.ID)
+
+	playerRepository := NewMockPlayerRepository(t)
+	gameRepository := NewMockGameRepository(t)
+	playedGameRepository := NewMockPlayedGameRepository(t)
+
+	handler := NewHandler(playerRepository, gameRepository, playedGameRepository)
+
+	gameRepository.AssertNotCalled(t, "FindOne")
+	playedGameRepository.AssertNotCalled(t, "FindAll")
+	playedGameRepository.AssertNotCalled(t, "Insert")
+
+	req := RequestCreatePlayedGame{}
+	req.PlayerID = player.ID
+	req.Body.GameID = testutil.Faker().Int()
+
+	resp, err := handler.CreatePlayedGame(ctx, &req)
+	assert.Error(t, err)
+	assert.Equal(t, nil, resp)
+}
+
 func TestUpdatePlayedGame(t *testing.T) {
 	player := validPlayer()
 	played := validPlayedGame()
@@ -229,6 +277,31 @@ func TestUpdatePlayedGame(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEqual(t, nil, resp)
 	assert.Equal(t, played.ID, resp.Body.ID)
+}
+
+func TestUpdatePlayedGame_OtherPlayer(t *testing.T) {
+	player := validPlayer()
+	otherPlayer := validPlayer()
+	played := validPlayedGame()
+	ctx := ctxutil.SetPlayerID(t.Context(), otherPlayer.ID)
+
+	playerRepository := NewMockPlayerRepository(t)
+	gameRepository := NewMockGameRepository(t)
+	playedGameRepository := NewMockPlayedGameRepository(t)
+
+	handler := NewHandler(playerRepository, gameRepository, playedGameRepository)
+
+	playedGameRepository.AssertNotCalled(t, "FindOne")
+	playedGameRepository.AssertNotCalled(t, "Update")
+
+	req := RequestUpdatePlayedGame{}
+	req.PlayerID = player.ID
+	req.GameID = played.ID
+	req.Body.Rating = played.Rating
+
+	resp, err := handler.UpdatePlayedGame(ctx, &req)
+	assert.Error(t, err)
+	assert.Equal(t, nil, resp)
 }
 
 func TestUpdatePlayedGame_ConsecutiveDrop(t *testing.T) {

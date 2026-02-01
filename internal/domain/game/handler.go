@@ -2,6 +2,7 @@ package game
 
 import (
 	"context"
+	"log"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/lardira/playtrack/internal/domain"
@@ -37,6 +38,7 @@ func (h *Handler) Register(api huma.API) {
 func (h *Handler) GetAll(ctx context.Context, i *struct{}) (*domain.ResponseItems[Game], error) {
 	games, err := h.gameRepository.FindAll(ctx)
 	if err != nil {
+		log.Printf("game find all: %v", err)
 		return nil, huma.Error500InternalServerError("find all", err)
 	}
 
@@ -50,6 +52,7 @@ func (h *Handler) GetOne(ctx context.Context, i *struct {
 }) (*domain.ResponseItem[Game], error) {
 	game, err := h.gameRepository.FindOne(ctx, i.ID)
 	if err != nil {
+		log.Printf("game find one: %v", err)
 		return nil, huma.Error500InternalServerError("find", err)
 	}
 
@@ -70,11 +73,13 @@ func (h *Handler) Create(
 	nGame.CalculatePoints()
 
 	if err := nGame.Valid(); err != nil {
+		log.Printf("game valid: %v", err)
 		return nil, huma.Error400BadRequest("game is not valid", err)
 	}
 
 	id, err := h.gameRepository.Insert(ctx, &nGame)
 	if err != nil {
+		log.Printf("game insert: %v", err)
 		return nil, huma.Error500InternalServerError("create", err)
 	}
 
