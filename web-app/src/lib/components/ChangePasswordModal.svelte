@@ -4,6 +4,8 @@
 
     export let isOpen = false;
     export let onClose: () => void = () => {};
+    /** Имя пользователя текущего игрока — отправляется в теле запроса смены пароля */
+    export let username = '';
 
     let currentPassword = '';
     let newPassword = '';
@@ -45,7 +47,7 @@
         error = '';
 
         try {
-            await setPassword({ password: newPassword });
+            await setPassword({ password: newPassword, username });
             success = true;
             setTimeout(() => {
                 handleClose();

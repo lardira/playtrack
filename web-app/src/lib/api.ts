@@ -23,13 +23,13 @@ export async function api<T>(url: string, options: RequestInit = {}): Promise<T>
 
         try {
             const res = await fetch(baseURL + url, { ...options, headers });
+            // Читаем тело один раз — повторное чтение вызывает "body stream already read"
+            const text = await res.text();
 
-            // Проверяем, что ответ получен (не CORS ошибка)
             if (!res.ok) {
                 let errorMessage = `HTTP ${res.status}: ${res.statusText}`;
                 try {
-                    const errorData = await res.json();
-                    // Huma возвращает ошибки в формате { message: "..." } или { body: { message: "..." } }
+                    const errorData = text ? JSON.parse(text) : {};
                     if (errorData.message) {
                         errorMessage = errorData.message;
                     } else if (errorData.body?.message) {
@@ -38,12 +38,12 @@ export async function api<T>(url: string, options: RequestInit = {}): Promise<T>
                         errorMessage = errorData;
                     }
                 } catch {
-                    const errorText = await res.text();
-                    if (errorText) errorMessage = errorText;
+                    if (text) errorMessage = text;
                 }
                 throw new Error(errorMessage);
             }
-            return res.json();
+
+            return (text ? JSON.parse(text) : {}) as T;
         } catch (error: any) {
             // Если это ошибка сети (CORS, connection refused и т.д.)
             if (error.name === 'TypeError' && error.message.includes('fetch')) {
@@ -79,6 +79,7 @@ export interface RegisterResponse {
 
 export interface SetPasswordRequest {
     password: string;
+    username: string;
 }
 
 export interface SetPasswordResponse {
@@ -96,7 +97,8 @@ function unwrapBody<T>(res: { Body?: T; body?: T }): T | undefined {
 
 // Бэкенд возвращает { "$schema": "...", "token": "..." }
 export const login = async (data: LoginRequest): Promise<LoginResponse> => {
-    const response = await api<{ token?: string; Token?: string }>('/pub/auth/login', {
+    // Бэкенд: Path зарегистрирован как "/loing" (опечатка в internal/domain/auth/handler.go)
+    const response = await api<{ token?: string; Token?: string }>('/pub/auth/loing', {
         method: 'POST',
         body: JSON.stringify(data)
     });
@@ -146,6 +148,12 @@ export const getPlayerPlayedGames = (playerId: string) =>
 		`/v1/players/${playerId}/played-games`
 	).then(getItems);
 
+/** GET /v1/players/{id}/played-games/{gameID} — gameID is PlayedGame.id */
+export const getPlayerPlayedGame = (playerId: string, playedGameId: number) =>
+	api<{ Body?: { item: PlayedGame }; body?: { item: PlayedGame }; item?: PlayedGame }>(
+		`/v1/players/${playerId}/played-games/${playedGameId}`
+	).then(getItem);
+
 export interface UpdatePlayerRequest {
 	username?: string;
 	img?: string | null;
@@ -162,3 +170,64 @@ export const updatePlayer = async (playerId: string, data: UpdatePlayerRequest):
 };
 
 export const getLeaderboard = () => api<LeaderboardPlayer[]>('/v1/players/leaderboard');
+
+// Games API (GET /v1/games/, POST /v1/games/)
+export const getGames = () =>
+	api<{ Body?: { items: Game[] }; body?: { items: Game[] }; items?: Game[] }>('/v1/games/').then(getItems);
+export const getGame = (id: number) =>
+	api<{ Body?: { item: Game }; body?: { item: Game }; item?: Game }>(`/v1/games/${id}`).then(getItem);
+
+export interface CreateGameRequest {
+	title: string;
+	hours_to_beat: number;
+	url?: string | null;
+}
+export const createGame = async (data: CreateGameRequest): Promise<{ id: number }> => {
+	const response = await api<{ Body?: { id: number }; body?: { id: number }; id?: number }>('/v1/games/', {
+		method: 'POST',
+		body: JSON.stringify(data)
+	});
+	const id = (response as any).Body?.id ?? (response as any).body?.id ?? (response as any).id;
+	if (id == null) throw new Error('No id in response');
+	return { id };
+};
+
+// PlayedGame: POST /v1/players/{id}/played-games, PATCH /v1/players/{id}/played-games/{gameID}
+export const createPlayedGame = async (playerId: string, gameId: number): Promise<{ id: number }> => {
+	const response = await api<{ Body?: { id: number }; body?: { id: number }; id?: number }>(
+		`/v1/players/${playerId}/played-games`,
+		{
+			method: 'POST',
+			body: JSON.stringify({ game_id: gameId })
+		}
+	);
+	const id = (response as any).Body?.id ?? (response as any).body?.id ?? (response as any).id;
+	if (id == null) throw new Error('No id in response');
+	return { id };
+};
+
+export interface UpdatePlayedGameRequest {
+	points?: number;
+	comment?: string | null;
+	rating?: number | null;
+	status?: import('./types').PlayedGameStatus;
+	completed_at?: string | null;
+	play_time?: string | null;
+}
+/** PATCH /v1/players/{id}/played-games/{gameID} — gameID is PlayedGame.id */
+export const updatePlayedGame = async (
+	playerId: string,
+	playedGameId: number,
+	data: UpdatePlayedGameRequest
+): Promise<{ id: number }> => {
+	const response = await api<{ Body?: { id: number }; body?: { id: number } }>(
+		`/v1/players/${playerId}/played-games/${playedGameId}`,
+		{
+			method: 'PATCH',
+			body: JSON.stringify(data)
+		}
+	);
+	const id = (response as any).Body?.id ?? (response as any).body?.id;
+	if (id == null) throw new Error('No id in response');
+	return { id };
+};

@@ -221,7 +221,12 @@
 	<p class="text-surface-300 mb-3">
 		Подробная статистика по каждому игроку — в профиле.
 	</p>
-	<a href="#leaderboard" class="btn variant-filled-secondary">
-		К таблице
-	</a>
+	<div class="flex gap-3 justify-center flex-wrap">
+		<a href="#leaderboard" class="btn variant-filled-secondary">
+			К таблице
+		</a>
+		<a href="/games" class="btn variant-filled-secondary">
+			Шаблоны игр
+		</a>
+	</div>
 </section>
