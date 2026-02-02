@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -25,10 +26,14 @@ type humaContext huma.Context
 type authContext struct {
 	humaContext
 	playerID string
+	isAdmin  bool
 }
 
 func (c *authContext) Context() context.Context {
-	return ctxutil.SetPlayerID(c.humaContext.Context(), c.playerID)
+	return ctxutil.SetPlayer(
+		c.humaContext.Context(),
+		ctxutil.CtxPlayer{ID: c.playerID, IsAdmin: c.isAdmin},
+	)
 }
 
 func Authorize(secret string) func(ctx huma.Context, next func(huma.Context)) {
@@ -55,7 +60,7 @@ func Authorize(secret string) func(ctx huma.Context, next func(huma.Context)) {
 			tokenString,
 			parseToken,
 			jwt.WithValidMethods([]string{apiutil.DefaultSigningMethod.Alg()}),
-			jwt.WithAudience(apiutil.RoleAdmin.String(), apiutil.RolePlayer.String()),
+			jwt.WithAudience(apiutil.RoleAdmin, apiutil.RolePlayer),
 			jwt.WithIssuedAt(),
 			jwt.WithNotBeforeRequired(),
 		)
@@ -75,9 +80,16 @@ func Authorize(secret string) func(ctx huma.Context, next func(huma.Context)) {
 			return
 		}
 
+		aud, err := token.Claims.GetAudience()
+		if err != nil {
+			ctx.SetStatus(http.StatusUnauthorized)
+			return
+		}
+
 		authCtx := authContext{
 			humaContext: ctx,
 			playerID:    playerID,
+			isAdmin:     slices.Contains(aud, apiutil.RoleAdmin),
 		}
 		next(&authCtx)
 	}

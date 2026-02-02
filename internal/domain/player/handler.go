@@ -333,8 +333,14 @@ func (h *Handler) containsNonterminatedPlayed(ctx context.Context, playerID stri
 }
 
 func checkAuthorizedFor(ctx context.Context, playerID string) bool {
-	ctxPlayerID, ok := ctxutil.GetPlayerID(ctx)
-	if !ok || ctxPlayerID != playerID {
+	ctxPlayer, ok := ctxutil.GetPlayer(ctx)
+	if !ok {
+		return false
+	}
+
+	if ctxPlayer.IsAdmin {
+		return true
+	} else if ctxPlayer.ID != playerID {
 		return false
 	}
 	return true

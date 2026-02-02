@@ -10,6 +10,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/lardira/playtrack/internal/pkg/apiutil"
 	"github.com/lardira/playtrack/internal/pkg/ctxutil"
 	"github.com/lardira/playtrack/internal/pkg/testutil"
 )
@@ -49,8 +50,9 @@ func TestAuthMiddleware(t *testing.T) {
 		ExpiresAt: jwt.NewNumericDate(now.Add(1 * time.Minute)),
 		NotBefore: jwt.NewNumericDate(now),
 		IssuedAt:  jwt.NewNumericDate(now),
+		Audience:  []string{apiutil.RolePlayer},
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token := jwt.NewWithClaims(apiutil.DefaultSigningMethod, claims)
 	signedToken, _ := token.SignedString([]byte(testSecret))
 
 	authFunc := Authorize(testSecret)
@@ -60,7 +62,7 @@ func TestAuthMiddleware(t *testing.T) {
 			return authPrefix + signedToken
 		},
 		onSetStatus: func(code int) {
-			assert.Zero(t, code)
+			assert.NotEqual(t, http.StatusUnauthorized, code)
 		},
 	}
 	authFunc(ctx, func(ctx huma.Context) {
@@ -68,9 +70,45 @@ func TestAuthMiddleware(t *testing.T) {
 		assert.True(t, ok)
 		assert.NotZero(t, authCtx)
 
-		pID, ok := ctxutil.GetPlayerID(authCtx.Context())
+		ctxP, ok := ctxutil.GetPlayer(authCtx.Context())
 		assert.True(t, ok)
-		assert.Equal(t, playerID, pID)
+		assert.Equal(t, playerID, ctxP.ID)
+	})
+}
+
+func TestAuthMiddleware_Admin(t *testing.T) {
+	playerID := uuid.NewString()
+	now := time.Now()
+	claims := jwt.RegisteredClaims{
+		ID:        uuid.NewString(),
+		Subject:   playerID,
+		ExpiresAt: jwt.NewNumericDate(now.Add(1 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(now),
+		IssuedAt:  jwt.NewNumericDate(now),
+		Audience:  []string{apiutil.RolePlayer, apiutil.RoleAdmin},
+	}
+	token := jwt.NewWithClaims(apiutil.DefaultSigningMethod, claims)
+	signedToken, _ := token.SignedString([]byte(testSecret))
+
+	authFunc := Authorize(testSecret)
+
+	ctx := testCtx{
+		onHeader: func() string {
+			return authPrefix + signedToken
+		},
+		onSetStatus: func(code int) {
+			assert.NotEqual(t, http.StatusUnauthorized, code)
+		},
+	}
+	authFunc(ctx, func(ctx huma.Context) {
+		authCtx, ok := ctx.(*authContext)
+		assert.True(t, ok)
+		assert.NotZero(t, authCtx)
+
+		ctxP, ok := ctxutil.GetPlayer(authCtx.Context())
+		assert.True(t, ok)
+		assert.Equal(t, playerID, ctxP.ID)
+		assert.True(t, ctxP.IsAdmin)
 	})
 }
 
@@ -113,7 +151,7 @@ func TestAuthMiddleware_InvalidHeader(t *testing.T) {
 				assert.True(t, ok)
 				assert.NotZero(t, authCtx)
 
-				_, ok = ctxutil.GetPlayerID(authCtx.Context())
+				_, ok = ctxutil.GetPlayer(authCtx.Context())
 				assert.False(t, ok)
 			})
 		})

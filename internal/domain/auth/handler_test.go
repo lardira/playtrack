@@ -113,7 +113,7 @@ func TestSetPassword(t *testing.T) {
 
 	newID := uuid.NewString()
 	username := testutil.Faker().Username()
-	ctx := ctxutil.SetPlayerID(t.Context(), newID)
+	ctx := ctxutil.SetPlayer(t.Context(), ctxutil.CtxPlayer{ID: newID})
 
 	req := RequestSetPassword{}
 	req.Body.Username = username
@@ -154,7 +154,7 @@ func TestSetPassword_DifferentPlayer(t *testing.T) {
 	newID := uuid.NewString()
 	diffID := uuid.NewString()
 	username := testutil.Faker().Username()
-	ctx := ctxutil.SetPlayerID(t.Context(), newID)
+	ctx := ctxutil.SetPlayer(t.Context(), ctxutil.CtxPlayer{ID: newID})
 
 	req := RequestSetPassword{}
 	req.Body.Username = username
@@ -171,12 +171,13 @@ func TestSetPassword_DifferentPlayer(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// TODO: token test
-// func TestIssueToken(t *testing.T) {
-// 	handler := NewHandler(testSecret, NewMockPlayerRepository(t))
-// 	playerID := valid
+func TestIssueToken(t *testing.T) {
+	var p player.Player
+	testutil.Faker().Struct(&p)
 
-// 	token, err := handler.issueToken(playerID)
-// 	assert.NoError(t, err)
-// 	assert.NotZero(t, token)
-// }
+	handler := NewHandler(testSecret, NewMockPlayerRepository(t))
+
+	token, err := handler.issueToken(&p)
+	assert.NoError(t, err)
+	assert.NotZero(t, token)
+}

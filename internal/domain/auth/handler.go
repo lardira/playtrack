@@ -132,7 +132,7 @@ func (h *Handler) SetPassword(
 	ctx context.Context,
 	i *RequestSetPassword,
 ) (*domain.ResponseID[string], error) {
-	playerID, ok := ctxutil.GetPlayerID(ctx)
+	ctxPlr, ok := ctxutil.GetPlayer(ctx)
 	if !ok {
 		return nil, huma.Error401Unauthorized("player id is invalid")
 	}
@@ -142,13 +142,13 @@ func (h *Handler) SetPassword(
 		log.Printf("find one by username %v: %v", i.Body.Username, err)
 		return nil, huma.Error401Unauthorized("player not found")
 	}
-	if found.ID != playerID {
-		log.Printf("player %v access to %v", playerID, found.ID)
+	if found.ID != ctxPlr.ID {
+		log.Printf("player %v access to %v", ctxPlr, found.ID)
 		return nil, huma.Error403Forbidden("player cannot access this entity")
 	}
 
 	nPlayer := player.PlayerUpdate{
-		ID:       playerID,
+		ID:       ctxPlr.ID,
 		Password: &i.Body.Password,
 	}
 	if err := nPlayer.Valid(); err != nil {
@@ -177,10 +177,10 @@ func (h *Handler) SetPassword(
 
 func (h *Handler) issueToken(p *player.Player) (string, error) {
 	now := time.Now()
-	audience := []string{apiutil.RolePlayer.String()}
+	audience := []string{apiutil.RolePlayer}
 
 	if p.IsAdmin {
-		audience = append(audience, apiutil.RoleAdmin.String())
+		audience = append(audience, apiutil.RoleAdmin)
 	}
 
 	claims := jwt.RegisteredClaims{
