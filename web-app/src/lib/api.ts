@@ -92,7 +92,7 @@ function unwrapBody<T>(res: { Body?: T; body?: T }): T | undefined {
 }
 
 export const login = async (data: LoginRequest): Promise<LoginResponse> => {
-    const response = await api<{ token?: string; Token?: string }>('/pub/auth/loing', {
+    const response = await api<{ token?: string; Token?: string }>('/pub/auth/login', {
         method: 'POST',
         body: JSON.stringify(data)
     });
