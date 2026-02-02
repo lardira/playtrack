@@ -15,6 +15,15 @@ export interface LeaderboardPlayer {
     rerolled: number;
 }
 
+export interface LeaderboardRow {
+    player: Player;
+    currentGame: string | null;
+    points: number;
+    completed: number;
+    dropped: number;
+    rerolled: number;
+}
+
 export interface Game {
     id: number;
     points: number;

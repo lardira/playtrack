@@ -10,11 +10,9 @@
     let loading = false;
     let error = "";
 
-    // Login form
     let loginUsername = "";
     let loginPassword = "";
 
-    // Register form
     let registerUsername = "";
     let registerPassword = "";
     let registerPasswordConfirm = "";
@@ -22,7 +20,6 @@
     let registerImg = "";
 
     onMount(() => {
-        // Если пользователь уже залогинен, перенаправляем на главную
         user.subscribe((u) => {
             if (u) {
                 goto("/");
@@ -94,7 +91,6 @@
                 img: registerImg || null,
             });
 
-            // После регистрации автоматически логинимся
             const loginResponse = await login({
                 username: registerUsername,
                 password: registerPassword,

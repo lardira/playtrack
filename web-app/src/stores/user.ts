@@ -19,7 +19,6 @@ const getStoredToken = (): string | null => {
 export const user = writable<Player | null>(getStoredUser());
 export const token = writable<string | null>(getStoredToken());
 
-// Функция для декодирования JWT токена и получения playerID
 function getPlayerIdFromToken(token: string): string | null {
     try {
         const parts = token.split('.');
@@ -31,7 +30,6 @@ function getPlayerIdFromToken(token: string): string | null {
     }
 }
 
-// Функция для загрузки пользователя по токену
 export async function loadUserFromToken(): Promise<void> {
     const currentToken = getStoredToken();
     if (!currentToken) {
@@ -74,7 +72,6 @@ if (browser) {
         loadUserFromToken();
     }
 
-    // Синхронизируем токен с куки и с запасным хранилищем (для api без циклического импорта)
     token.subscribe((value) => {
         setCurrentToken(value);
         if (value) {
@@ -84,7 +81,6 @@ if (browser) {
         }
     });
 
-    // Синхронизируем пользователя с localStorage
     user.subscribe((value) => {
         if (value) {
             localStorage.setItem('user', JSON.stringify(value));

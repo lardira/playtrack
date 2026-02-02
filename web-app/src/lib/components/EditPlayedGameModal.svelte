@@ -8,7 +8,6 @@
     export let playedGame: PlayedGame | null = null;
     export let playerId = '';
     export let gameTitle = '';
-    /** Вызывается после успешного сохранения, чтобы обновить список */
     export let onSaved: () => void = () => {};
 
     let comment = '';
@@ -20,7 +19,6 @@
     let status: PlayedGameStatus = 'in_progress';
     let loading = false;
     let error = '';
-    /** Инициализируем форму только при открытии другой записи, чтобы не затирать ввод при каждом ре-рендере */
     let lastOpenedId: number | null = null;
 
     const STATUS_OPTIONS: { value: PlayedGameStatus; label: string }[] = [
@@ -31,7 +29,6 @@
         { value: 'rerolled', label: 'Реролл' },
     ];
 
-    /** ISO date string (YYYY-MM-DD) из backend даты или null */
     function parseCompletedAtDate(iso: string | null): string {
         if (!iso) {
             const today = new Date();
@@ -61,7 +58,6 @@
     }
     $: if (!playedGame) lastOpenedId = null;
 
-    /** Бэкенд ожидает формат Go: "34h30m", не ISO 8601 PT34H30M */
     function buildPlayTime(): string | null {
         if (playTimeHours === 0 && playTimeMinutes === 0) return null;
         const parts = [];

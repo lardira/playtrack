@@ -4,7 +4,6 @@
 
     export let isOpen = false;
     export let onClose: () => void = () => {};
-    /** Имя пользователя текущего игрока — отправляется в теле запроса смены пароля */
     export let username = '';
 
     let currentPassword = '';

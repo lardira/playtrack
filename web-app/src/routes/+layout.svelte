@@ -4,8 +4,6 @@
 	import { goto } from "$app/navigation";
 	import { page } from "$app/stores";
 	import { browser } from "$app/environment";
-
-	// Floating UI for Popups
 	import {
 		computePosition,
 		autoUpdate,
@@ -25,14 +23,12 @@
 	let currentUser: Player | null = null;
 	let players: Player[] = [];
 
-	// Редирект на логин, если пользователь не залогинен
 	$: if (browser && $token === null && $page.url.pathname !== "/login") {
 		goto("/login");
 	}
 
 	onMount(() => {
 		user.subscribe((value) => (currentUser = value));
-		// Загружаем список игроков с API при наличии токена
 		if ($token) {
 			getPlayers()
 				.then((list) => (players = list))
@@ -49,7 +45,6 @@
 		});
 	});
 
-	// Генерируем цвет на основе username для UI
 	function getPlayerColor(username: string): string {
 		const colors = [
 			"#f97316",
@@ -72,10 +67,8 @@
 	}
 </script>
 
-<!-- App Shell -->
 <AppShell>
 	<svelte:fragment slot="header">
-		<!-- App Bar -->
 		<AppBar>
 			<svelte:fragment slot="lead">
 				<a
@@ -97,7 +90,6 @@
 					>
 				{/if}
 
-				<!-- PLAYER BUTTONS -->
 				<div class="flex items-center gap-2 mr-3">
 					{#each players as player}
 						<a
@@ -113,7 +105,6 @@
 					{/each}
 				</div>
 
-				<!-- Ссылки на соцсети -->
 				<a
 					class="btn btn-sm variant-ghost-surface"
 					href="https://github.com/lardira/playtrack/tree/master"
@@ -126,6 +117,5 @@
 		</AppBar>
 	</svelte:fragment>
 
-	<!-- Page Route Content -->
 	<slot />
 </AppShell>

@@ -29,7 +29,6 @@
     $: gamesMap = Object.fromEntries(allGames.map((g) => [g.id, g])) as Record<number, Game>;
     $: gameTitle = (gameId: number) => gamesMap[gameId]?.title ?? `ID: ${gameId}`;
 
-    // Генерируем цвет на основе username для UI
     function getPlayerColor(username: string): string {
         const colors = [
             "#f97316",
@@ -46,26 +45,11 @@
     }
 
     const STATUS_META: Record<string, { label: string; color: string }> = {
-        completed: {
-            label: "Пройдено",
-            color: "#22c55e", // green
-        },
-        dropped: {
-            label: "Дроп",
-            color: "#ef4444", // red
-        },
-        rerolled: {
-            label: "Реролл",
-            color: "#38bdf8", // blue
-        },
-        in_progress: {
-            label: "В процессе",
-            color: "#facc15", // yellow
-        },
-        added: {
-            label: "Добавлено",
-            color: "#94a3b8", // gray
-        },
+        completed: { label: "Пройдено", color: "#22c55e" },
+        dropped: { label: "Дроп", color: "#ef4444" },
+        rerolled: { label: "Реролл", color: "#38bdf8" },
+        in_progress: { label: "В процессе", color: "#facc15" },
+        added: { label: "Добавлено", color: "#94a3b8" },
     };
 
     $: id = $page.params.id;
@@ -99,10 +83,8 @@
     }
 
     $: playerColor = player ? getPlayerColor(player.username) : "#f97316";
-    // sub из JWT = id игрока; на своей странице показываем «Редактировать»
     $: isOwnProfile = !!currentUser && !!player && currentUser.id === player.id;
 
-    // Динамическая статистика из playedGames
     $: totalGames = playedGames.length;
     $: totalPoints = playedGames.reduce((sum, pg) => sum + pg.points, 0);
     $: gamesExcludingReroll = playedGames.filter((pg) => pg.status !== "rerolled");
@@ -112,7 +94,6 @@
             ? Math.round((completedCount / gamesExcludingReroll.length) * 100)
             : 0;
 
-    /** Парсит duration из API: Go-формат "34h30m0s" или ISO 8601 "PT45H30M" */
     function formatPlayTime(duration: string | null): string {
         if (!duration) return "0h";
 
@@ -133,7 +114,6 @@
         return "0h";
     }
 
-    // Функция для форматирования даты в формат день/месяц/год
     function formatDate(dateString: string): string {
         const date = new Date(dateString);
         const day = date.getDate().toString().padStart(2, "0");
@@ -159,7 +139,6 @@
         if (p) player = p;
     }
 
-    // --- Создание новой записи (только на своей странице) ---
     let showNewRow = false;
     let newRecordTitle = "";
     let newRecordHoursToBeat = 1;
@@ -167,6 +146,8 @@
     let selectedGame: Game | null = null;
     let createLoading = false;
     let createError = "";
+    let gameDropdownOpen = false;
+    let gameDropdownBlurTimeout: ReturnType<typeof setTimeout> | null = null;
 
     $: searchQuery = newRecordTitle.trim().toLowerCase();
     $: searchResults =
@@ -181,6 +162,11 @@
         newRecordUrl = "";
         selectedGame = null;
         createError = "";
+        gameDropdownOpen = false;
+        if (gameDropdownBlurTimeout) {
+            clearTimeout(gameDropdownBlurTimeout);
+            gameDropdownBlurTimeout = null;
+        }
     }
 
     function cancelNewRow() {
@@ -190,16 +176,25 @@
         newRecordUrl = "";
         selectedGame = null;
         createError = "";
+        gameDropdownOpen = false;
+        if (gameDropdownBlurTimeout) {
+            clearTimeout(gameDropdownBlurTimeout);
+            gameDropdownBlurTimeout = null;
+        }
     }
 
     function selectGame(game: Game) {
+        if (gameDropdownBlurTimeout) {
+            clearTimeout(gameDropdownBlurTimeout);
+            gameDropdownBlurTimeout = null;
+        }
+        gameDropdownOpen = false;
         selectedGame = game;
         newRecordTitle = game.title;
         newRecordHoursToBeat = game.hours_to_beat;
         newRecordUrl = game.url ?? "";
     }
 
-    /** Статусы, при которых нельзя добавить новую запись — у игрока может быть только одна незавершённая игра */
     const NONTERMINATED_STATUSES = ["added", "in_progress"];
 
     async function submitNewRecord() {
@@ -392,8 +387,21 @@
                                 placeholder="Введите название или выберите из списка"
                                 bind:value={newRecordTitle}
                                 disabled={createLoading}
+                                on:focus={() => {
+                                    if (gameDropdownBlurTimeout) {
+                                        clearTimeout(gameDropdownBlurTimeout);
+                                        gameDropdownBlurTimeout = null;
+                                    }
+                                    gameDropdownOpen = true;
+                                }}
+                                on:blur={() => {
+                                    gameDropdownBlurTimeout = setTimeout(() => {
+                                        gameDropdownBlurTimeout = null;
+                                        gameDropdownOpen = false;
+                                    }, 200);
+                                }}
                             />
-                            {#if searchResults.length > 0}
+                            {#if searchResults.length > 0 && gameDropdownOpen}
                                 <ul
                                     class="absolute z-10 mt-1 w-full rounded-lg bg-surface-800 border border-surface-600 shadow-lg max-h-48 overflow-auto"
                                 >
@@ -402,7 +410,7 @@
                                             <button
                                                 type="button"
                                                 class="w-full text-left px-4 py-2 hover:bg-surface-700"
-                                                on:click={() => selectGame(game)}
+                                                on:mousedown|preventDefault={() => selectGame(game)}
                                             >
                                                 {game.title}
                                                 <span class="text-surface-500 text-sm ml-2"

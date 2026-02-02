@@ -1,36 +1,35 @@
 <script lang="ts">
 	import { onMount } from "svelte";
 	import { user } from "../stores/user";
-	import type { Player } from "../lib/types";
-	import { getPlayers } from "../lib/api";
+	import type { Player, LeaderboardRow } from "../lib/types";
+	import { getPlayers, getGames, getPlayerPlayedGames } from "../lib/api";
 
 	let currentUser: Player | null = null;
-	let leaderboard: Player[] = [];
+	let leaderboardRows: LeaderboardRow[] = [];
 	let loading = true;
 	let loadError = "";
 
 	const placeStyles = [
 		{
-			bg: "#facc15", // gold
+			bg: "#facc15",
 			color: "#000",
 			label: "🥇",
 			glow: "0 0 40px rgba(250,204,21,0.35)",
 		},
 		{
-			bg: "#e5e7eb", // silver
+			bg: "#e5e7eb",
 			color: "#000",
 			label: "🥈",
 			glow: "0 0 30px rgba(229,231,235,0.25)",
 		},
 		{
-			bg: "#d97706", // bronze
+			bg: "#d97706",
 			color: "#000",
 			label: "🥉",
 			glow: "0 0 25px rgba(217,119,6,0.25)",
 		},
 	];
 
-	// Цвет по username для UI
 	function getPlayerColor(username: string): string {
 		const colors = [
 			"#f97316",
@@ -46,21 +45,69 @@
 		return colors[hash % colors.length];
 	}
 
-	// Сортировка по username (данные с бэкенда GET /v1/players/)
-	$: sorted = [...leaderboard].sort((a, b) =>
-		a.username.localeCompare(b.username),
-	);
+	$: sortedByPoints = [...leaderboardRows].sort((a, b) => b.points - a.points);
+	$: topThree = sortedByPoints.slice(0, 3);
+
+	function scrollToLeaderboard() {
+		document.getElementById("leaderboard")?.scrollIntoView({ behavior: "smooth", block: "start" });
+	}
 
 	onMount(() => {
 		user.subscribe((value) => (currentUser = value));
-		getPlayers()
-			.then((list) => {
-				leaderboard = list ?? [];
-				loadError = "";
+		Promise.all([getPlayers(), getGames()])
+			.then(([players, games]) => {
+				const gamesMap = new Map(games.map((g) => [g.id, g]));
+				return Promise.all(
+					players.map((player) =>
+						getPlayerPlayedGames(player.id)
+							.then((played) => {
+								const notTerminated = played.filter(
+									(p) => p.status === "added" || p.status === "in_progress"
+								);
+								const lastInProgress = [...notTerminated].sort(
+									(a, b) =>
+										new Date(b.started_at).getTime() -
+										new Date(a.started_at).getTime()
+								)[0];
+								const currentGame = lastInProgress
+									? gamesMap.get(lastInProgress.game_id)?.title ?? null
+									: null;
+								const terminated = played.filter(
+									(p) =>
+										p.status === "completed" ||
+										p.status === "dropped" ||
+										p.status === "rerolled"
+								);
+								const points = terminated.reduce((s, p) => s + p.points, 0);
+								const completed = played.filter((p) => p.status === "completed").length;
+								const dropped = played.filter((p) => p.status === "dropped").length;
+								const rerolled = played.filter((p) => p.status === "rerolled").length;
+								return {
+									player,
+									currentGame,
+									points,
+									completed,
+									dropped,
+									rerolled,
+								};
+							})
+							.catch(() => ({
+								player,
+								currentGame: null,
+								points: 0,
+								completed: 0,
+								dropped: 0,
+								rerolled: 0,
+							}))
+					)
+				).then((rows) => {
+					leaderboardRows = rows;
+					loadError = "";
+				});
 			})
 			.catch((err) => {
-				loadError = err?.message ?? "Не удалось загрузить список игроков";
-				leaderboard = [];
+				loadError = err?.message ?? "Не удалось загрузить данные";
+				leaderboardRows = [];
 			})
 			.finally(() => (loading = false));
 	});
@@ -88,9 +135,13 @@
 				>Login to start tracking</a
 			>
 		{/if}
-		<a href="#leaderboard" class="btn variant-ghost-surface"
-			>View leaderboard</a
+		<button
+			type="button"
+			class="btn variant-ghost-surface"
+			on:click={scrollToLeaderboard}
 		>
+			View leaderboard
+		</button>
 	</div> -->
 
 	<!-- glow -->
@@ -111,7 +162,7 @@
 		</div>
 	{:else}
 	<div class="grid gap-6 md:grid-cols-3">
-		{#each sorted.slice(0, 3) as player, index}
+		{#each topThree as { player }, index}
 			<a
 				href={`/users/${player.id}`}
 				class="relative rounded-2xl p-6 bg-surface shadow-lg transition hover:scale-[1.03]"
@@ -169,49 +220,58 @@
 			{loadError}
 		</div>
 	{:else}
-	<div class="space-y-3">
-		{#each sorted as player, index}
-			<a
-				href={`/users/${player.id}`}
-				class="group block rounded-xl p-4 bg-surface shadow-md transition hover:shadow-xl"
-				style={`border-left: 6px solid ${getPlayerColor(player.username)}`}
-			>
-				<div class="flex items-center gap-4">
-					<!-- PLACE -->
-					<div
-						class="w-10 h-10 flex items-center justify-center rounded-full text-lg font-bold"
-						style={`
-						background: ${placeStyles[index]?.bg ?? "transparent"};
-						color: ${placeStyles[index]?.color ?? getPlayerColor(player.username)};
-					`}
+	<div class="overflow-x-auto rounded-xl bg-surface shadow-md">
+		<table class="w-full text-left">
+			<thead>
+				<tr class="border-b border-surface-700">
+					<th class="p-3 font-semibold text-surface-300">Место</th>
+					<th class="p-3 font-semibold text-surface-300">Игрок</th>
+					<th class="p-3 font-semibold text-surface-300">Текущая игра</th>
+					<th class="p-3 font-semibold text-surface-300 text-right">Очки</th>
+					<th class="p-3 font-semibold text-surface-300 text-right">Пройдено</th>
+					<th class="p-3 font-semibold text-surface-300 text-right">Дроп</th>
+					<th class="p-3 font-semibold text-surface-300 text-right">Реролл</th>
+				</tr>
+			</thead>
+			<tbody>
+				{#each sortedByPoints as row, index}
+					<tr
+						class="border-b border-surface-800 hover:bg-surface-800/50 transition"
 					>
-						{placeStyles[index]?.label ?? index + 1}
-					</div>
-
-					<!-- INFO -->
-					<div class="flex-1">
-						<p
-							class="text-lg font-semibold group-hover:underline"
-							style={`color:${getPlayerColor(player.username)}`}
-						>
-							{player.username}
-						</p>
-						{#if player.email}
-							<p class="text-sm text-surface-400">
-								{player.email}
-							</p>
-						{/if}
-					</div>
-
-					<!-- CREATED AT -->
-					<div class="text-right">
-						<p class="text-sm text-surface-400">
-							{new Date(player.created_at).toLocaleDateString()}
-						</p>
-					</div>
-				</div>
-			</a>
-		{/each}
+						<td class="p-3">
+							<div
+								class="w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold"
+								style={`
+									background: ${placeStyles[index]?.bg ?? "transparent"};
+									color: ${placeStyles[index]?.color ?? getPlayerColor(row.player.username)};
+								`}
+							>
+								{placeStyles[index]?.label ?? index + 1}
+							</div>
+						</td>
+						<td class="p-3">
+							<a
+								href={`/users/${row.player.id}`}
+								class="font-semibold hover:underline"
+								style={`color:${getPlayerColor(row.player.username)}`}
+							>
+								{row.player.username}
+							</a>
+							{#if row.player.email}
+								<p class="text-sm text-surface-400">{row.player.email}</p>
+							{/if}
+						</td>
+						<td class="p-3 text-surface-300">
+							{row.currentGame ?? "—"}
+						</td>
+						<td class="p-3 text-right font-medium">{row.points}</td>
+						<td class="p-3 text-right">{row.completed}</td>
+						<td class="p-3 text-right">{row.dropped}</td>
+						<td class="p-3 text-right">{row.rerolled}</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
 	</div>
 	{/if}
 </section>
@@ -222,9 +282,13 @@
 		Подробная статистика по каждому игроку — в профиле.
 	</p>
 	<div class="flex gap-3 justify-center flex-wrap">
-		<a href="#leaderboard" class="btn variant-filled-secondary">
+		<!-- <button
+			type="button"
+			class="btn variant-filled-secondary"
+			on:click={scrollToLeaderboard}
+		>
 			К таблице
-		</a>
+		</button> -->
 		<a href="/games" class="btn variant-filled-secondary">
 			Шаблоны игр
 		</a>
