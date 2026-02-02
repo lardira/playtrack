@@ -71,7 +71,7 @@
 	class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-600/20 via-surface-900 to-secondary-600/20 p-10 text-center shadow-xl"
 >
 	<h1 class="text-4xl font-extrabold tracking-tight mb-3">
-		Welcome to <span class="text-primary-400">PlayTracker</span>
+		Welcome to <span class="text-primary-400">PlayTrack</span>
 	</h1>
 	<p class="text-lg text-surface-300 max-w-xl mx-auto">
 		Отслеживай свои игры, сравнивайте статистику и доказывай, что ты лучший.

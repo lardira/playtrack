@@ -23,7 +23,6 @@ export async function api<T>(url: string, options: RequestInit = {}): Promise<T>
 
         try {
             const res = await fetch(baseURL + url, { ...options, headers });
-            // Читаем тело один раз — повторное чтение вызывает "body stream already read"
             const text = await res.text();
 
             if (!res.ok) {
@@ -45,7 +44,6 @@ export async function api<T>(url: string, options: RequestInit = {}): Promise<T>
 
             return (text ? JSON.parse(text) : {}) as T;
         } catch (error: any) {
-            // Если это ошибка сети (CORS, connection refused и т.д.)
             if (error.name === 'TypeError' && error.message.includes('fetch')) {
                 throw new Error(
                     `Ошибка: ${error.message}`
@@ -56,7 +54,6 @@ export async function api<T>(url: string, options: RequestInit = {}): Promise<T>
     }
 }
 
-// Auth API
 export interface LoginRequest {
     username: string;
     password: string;
@@ -90,15 +87,12 @@ export interface PlayerResponse {
     item: Player;
 }
 
-// Backend returns { Body: { token } } or { body: { token } } depending on serialization
 function unwrapBody<T>(res: { Body?: T; body?: T }): T | undefined {
 	return res.Body ?? res.body;
 }
 
-// Бэкенд возвращает { "$schema": "...", "token": "..." }
 export const login = async (data: LoginRequest): Promise<LoginResponse> => {
-    // Бэкенд: Path зарегистрирован как "/loing" (опечатка в internal/domain/auth/handler.go)
-    const response = await api<{ token?: string; Token?: string }>('/pub/auth/loing', {
+    const response = await api<{ token?: string; Token?: string }>('/pub/auth/login', {
         method: 'POST',
         body: JSON.stringify(data)
     });
@@ -127,7 +121,6 @@ export const setPassword = async (data: SetPasswordRequest): Promise<SetPassword
     return { id };
 };
 
-// Player API — бэкенд может вернуть { Body: { item/items } }, { body: { ... } } или { item/items } на верхнем уровне
 function getItems<T>(r: { Body?: { items: T[] }; body?: { items: T[] }; items?: T[] }): T[] {
 	const wrap = r.Body ?? r.body;
 	return wrap?.items ?? r.items ?? [];
@@ -172,7 +165,6 @@ export const updatePlayer = async (playerId: string, data: UpdatePlayerRequest):
 
 export const getLeaderboard = () => api<LeaderboardPlayer[]>('/v1/players/leaderboard');
 
-// Games API (GET /v1/games/, POST /v1/games/)
 export const getGames = () =>
 	api<{ Body?: { items: Game[] }; body?: { items: Game[] }; items?: Game[] }>('/v1/games/').then(getItems);
 export const getGame = (id: number) =>
@@ -193,7 +185,6 @@ export const createGame = async (data: CreateGameRequest): Promise<{ id: number 
 	return { id };
 };
 
-// PlayedGame: POST /v1/players/{id}/played-games, PATCH /v1/players/{id}/played-games/{gameID}
 export const createPlayedGame = async (playerId: string, gameId: number): Promise<{ id: number }> => {
 	const response = await api<{ Body?: { id: number }; body?: { id: number }; id?: number }>(
 		`/v1/players/${playerId}/played-games`,
@@ -215,7 +206,6 @@ export interface UpdatePlayedGameRequest {
 	completed_at?: string | null;
 	play_time?: string | null;
 }
-/** PATCH /v1/players/{id}/played-games/{gameID} — gameID is PlayedGame.id */
 export const updatePlayedGame = async (
 	playerId: string,
 	playedGameId: number,
