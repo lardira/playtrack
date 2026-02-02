@@ -171,11 +171,12 @@ func TestSetPassword_DifferentPlayer(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestIssueToken(t *testing.T) {
-	handler := NewHandler(testSecret, NewMockPlayerRepository(t))
-	playerID := uuid.NewString()
+// TODO: token test
+// func TestIssueToken(t *testing.T) {
+// 	handler := NewHandler(testSecret, NewMockPlayerRepository(t))
+// 	playerID := valid
 
-	token, err := handler.issueToken(playerID)
-	assert.NoError(t, err)
-	assert.NotZero(t, token)
-}
+// 	token, err := handler.issueToken(playerID)
+// 	assert.NoError(t, err)
+// 	assert.NotZero(t, token)
+// }

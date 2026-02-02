@@ -10,6 +10,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/lardira/playtrack/internal/pkg/apiutil"
 	"github.com/lardira/playtrack/internal/pkg/ctxutil"
 )
 
@@ -39,7 +40,7 @@ func Authorize(secret string) func(ctx huma.Context, next func(huma.Context)) {
 			return
 		}
 
-		token, err := jwt.Parse(tokenString, func(t *jwt.Token) (any, error) {
+		parseToken := func(t *jwt.Token) (any, error) {
 			exp, err := t.Claims.GetExpirationTime()
 			if err != nil {
 				return nil, err
@@ -48,7 +49,16 @@ func Authorize(secret string) func(ctx huma.Context, next func(huma.Context)) {
 				return nil, fmt.Errorf("token expired")
 			}
 			return []byte(secret), nil
-		})
+		}
+
+		token, err := jwt.Parse(
+			tokenString,
+			parseToken,
+			jwt.WithValidMethods([]string{apiutil.DefaultSigningMethod.Alg()}),
+			jwt.WithAudience(apiutil.RoleAdmin.String(), apiutil.RolePlayer.String()),
+			jwt.WithIssuedAt(),
+			jwt.WithNotBeforeRequired(),
+		)
 		if err != nil {
 			ctx.SetStatus(http.StatusUnauthorized)
 			return

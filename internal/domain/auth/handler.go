@@ -83,7 +83,7 @@ func (h *Handler) Login(ctx context.Context, i *RequestLoginPlayer) (*ResponseLo
 		return nil, huma.Error401Unauthorized("username or password is incorrect")
 	}
 
-	token, err := h.issueToken(found.ID)
+	token, err := h.issueToken(found)
 	if err != nil {
 		log.Printf("login issue token: %v", err)
 		return nil, huma.Error500InternalServerError("could not issue token", err)
@@ -175,15 +175,23 @@ func (h *Handler) SetPassword(
 	return &resp, nil
 }
 
-func (h *Handler) issueToken(playerID string) (string, error) {
+func (h *Handler) issueToken(p *player.Player) (string, error) {
 	now := time.Now()
+	audience := []string{apiutil.RolePlayer.String()}
+
+	if p.IsAdmin {
+		audience = append(audience, apiutil.RoleAdmin.String())
+	}
+
 	claims := jwt.RegisteredClaims{
 		ID:        uuid.NewString(),
-		Subject:   playerID,
+		Subject:   p.ID,
 		ExpiresAt: jwt.NewNumericDate(now.Add(defaultExpiration)),
 		NotBefore: jwt.NewNumericDate(now),
 		IssuedAt:  jwt.NewNumericDate(now),
+		Audience:  audience,
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	token := jwt.NewWithClaims(apiutil.DefaultSigningMethod, claims)
 	return token.SignedString([]byte(h.secret))
 }
