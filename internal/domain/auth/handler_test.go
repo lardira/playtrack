@@ -209,6 +209,8 @@ func TestSetPassword_DifferentPlayer_AsAdmin(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, diffID, resp.Body.ID)
 
+	assert.Equal(t, diffID, constructedPlayer.ID)
+
 	assert.True(t, password.CompareHash(req.Body.Password, *constructedPlayer.Password))
 }
 

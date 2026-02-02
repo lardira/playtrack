@@ -148,7 +148,8 @@ func (h *Handler) SetPassword(
 	}
 
 	nPlayer := player.PlayerUpdate{
-		ID:       ctxPlr.ID,
+		ID:       found.ID,
+		Username: &found.Username,
 		Password: &i.Body.Password,
 	}
 	if err := nPlayer.Valid(); err != nil {
