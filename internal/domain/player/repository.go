@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	playerColumns     string = "id, username, img, email, password, created_at"
+	playerColumns     string = "id, username, img, email, password, created_at, is_admin"
 	playedGameColumns string = `id, player_id, game_id, points, comment, 
 	rating, status, started_at, completed_at, play_time`
 )
@@ -157,6 +157,7 @@ func playerFromRow(row pgx.Row) (*Player, error) {
 		&p.Email,
 		&p.Password,
 		&p.CreatedAt,
+		&p.IsAdmin,
 	)
 	if err != nil {
 		return nil, err

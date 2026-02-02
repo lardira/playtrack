@@ -61,7 +61,7 @@ func TestGetOne(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	player := validPlayer()
-	ctx := ctxutil.SetPlayerID(t.Context(), player.ID)
+	ctx := ctxutil.SetPlayer(t.Context(), ctxutil.CtxPlayer{ID: player.ID, IsAdmin: player.IsAdmin})
 
 	playerRepository := NewMockPlayerRepository(t)
 	gameRepository := NewMockGameRepository(t)
@@ -89,7 +89,7 @@ func TestUpdate(t *testing.T) {
 func TestUpdate_OtherPlayer(t *testing.T) {
 	player := validPlayer()
 	otherPlayer := validPlayer()
-	ctx := ctxutil.SetPlayerID(t.Context(), otherPlayer.ID)
+	ctx := ctxutil.SetPlayer(t.Context(), ctxutil.CtxPlayer{ID: otherPlayer.ID, IsAdmin: otherPlayer.IsAdmin})
 
 	playerRepository := NewMockPlayerRepository(t)
 	gameRepository := NewMockGameRepository(t)
@@ -177,7 +177,7 @@ func TestCreatePlayedGame(t *testing.T) {
 	played := validPlayedGame()
 	played.PlayerID = player.ID
 	playedGame := []PlayedGame{played}
-	ctx := ctxutil.SetPlayerID(t.Context(), player.ID)
+	ctx := ctxutil.SetPlayer(t.Context(), ctxutil.CtxPlayer{ID: player.ID})
 
 	playerRepository := NewMockPlayerRepository(t)
 	gameRepository := NewMockGameRepository(t)
@@ -225,7 +225,7 @@ func TestCreatePlayed_OtherPlayer(t *testing.T) {
 	player := validPlayer()
 	otherPlayer := validPlayer()
 
-	ctx := ctxutil.SetPlayerID(t.Context(), otherPlayer.ID)
+	ctx := ctxutil.SetPlayer(t.Context(), ctxutil.CtxPlayer{ID: otherPlayer.ID, IsAdmin: otherPlayer.IsAdmin})
 
 	playerRepository := NewMockPlayerRepository(t)
 	gameRepository := NewMockGameRepository(t)
@@ -250,7 +250,42 @@ func TestUpdatePlayedGame(t *testing.T) {
 	player := validPlayer()
 	played := validPlayedGame()
 	played.PlayerID = player.ID
-	ctx := ctxutil.SetPlayerID(t.Context(), player.ID)
+	ctx := ctxutil.SetPlayer(t.Context(), ctxutil.CtxPlayer{ID: player.ID})
+
+	playerRepository := NewMockPlayerRepository(t)
+	gameRepository := NewMockGameRepository(t)
+	playedGameRepository := NewMockPlayedGameRepository(t)
+
+	handler := NewHandler(playerRepository, gameRepository, playedGameRepository)
+
+	playedGameRepository.
+		On("FindOne", ctx, player.ID, played.ID).
+		Once().
+		Return(&played, nil)
+
+	playedGameRepository.
+		On("Update", ctx, mock.AnythingOfType("*player.PlayedGameUpdate")).
+		Once().
+		Return(played.ID, nil)
+
+	req := RequestUpdatePlayedGame{}
+	req.PlayerID = player.ID
+	req.GameID = played.ID
+	req.Body.Rating = played.Rating
+
+	resp, err := handler.UpdatePlayedGame(ctx, &req)
+	assert.NoError(t, err)
+	assert.NotEqual(t, nil, resp)
+	assert.Equal(t, played.ID, resp.Body.ID)
+}
+
+func TestUpdatePlayedGame_OtherPlayer_AsAdmin(t *testing.T) {
+	player := validPlayer()
+	otherPlayer := validPlayer()
+	otherPlayer.IsAdmin = true
+	played := validPlayedGame()
+
+	ctx := ctxutil.SetPlayer(t.Context(), ctxutil.CtxPlayer{ID: otherPlayer.ID, IsAdmin: otherPlayer.IsAdmin})
 
 	playerRepository := NewMockPlayerRepository(t)
 	gameRepository := NewMockGameRepository(t)
@@ -283,7 +318,7 @@ func TestUpdatePlayedGame_OtherPlayer(t *testing.T) {
 	player := validPlayer()
 	otherPlayer := validPlayer()
 	played := validPlayedGame()
-	ctx := ctxutil.SetPlayerID(t.Context(), otherPlayer.ID)
+	ctx := ctxutil.SetPlayer(t.Context(), ctxutil.CtxPlayer{ID: otherPlayer.ID, IsAdmin: otherPlayer.IsAdmin})
 
 	playerRepository := NewMockPlayerRepository(t)
 	gameRepository := NewMockGameRepository(t)
@@ -318,7 +353,7 @@ func TestUpdatePlayedGame_ConsecutiveDrop(t *testing.T) {
 	played[1].Status = PlayedGameStatusInProgress
 	played[1].Points = -2
 
-	ctx := ctxutil.SetPlayerID(t.Context(), player.ID)
+	ctx := ctxutil.SetPlayer(t.Context(), ctxutil.CtxPlayer{ID: player.ID, IsAdmin: player.IsAdmin})
 
 	playerRepository := NewMockPlayerRepository(t)
 	gameRepository := NewMockGameRepository(t)
@@ -376,7 +411,7 @@ func TestUpdatePlayedGame_Reroll(t *testing.T) {
 	played[1].Status = PlayedGameStatusInProgress
 	played[1].Points = 0
 
-	ctx := ctxutil.SetPlayerID(t.Context(), player.ID)
+	ctx := ctxutil.SetPlayer(t.Context(), ctxutil.CtxPlayer{ID: player.ID, IsAdmin: player.IsAdmin})
 
 	playerRepository := NewMockPlayerRepository(t)
 	gameRepository := NewMockGameRepository(t)

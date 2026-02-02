@@ -57,6 +57,7 @@ type Player struct {
 	Img       *string   `json:"img" required:"false"`
 	Email     *string   `json:"email" format:"email" required:"false"`
 	Password  string    `json:"-"`
+	IsAdmin   bool      `json:"is_admin"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

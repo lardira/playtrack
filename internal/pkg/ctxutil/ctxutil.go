@@ -7,15 +7,20 @@ import (
 type contextKey string
 
 const (
-	keyPlayerID contextKey = "playerID"
+	keyPlayer contextKey = "player"
 )
 
-func GetPlayerID(ctx context.Context) (string, bool) {
-	v := ctx.Value(keyPlayerID)
-	playerID, ok := v.(string)
-	return playerID, ok
+type CtxPlayer struct {
+	ID      string
+	IsAdmin bool
 }
 
-func SetPlayerID(ctx context.Context, playerID string) context.Context {
-	return context.WithValue(ctx, keyPlayerID, playerID)
+func GetPlayer(ctx context.Context) (CtxPlayer, bool) {
+	v := ctx.Value(keyPlayer)
+	player, ok := v.(CtxPlayer)
+	return player, ok && player.ID != ""
+}
+
+func SetPlayer(ctx context.Context, p CtxPlayer) context.Context {
+	return context.WithValue(ctx, keyPlayer, p)
 }

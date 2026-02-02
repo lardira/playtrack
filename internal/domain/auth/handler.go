@@ -83,7 +83,7 @@ func (h *Handler) Login(ctx context.Context, i *RequestLoginPlayer) (*ResponseLo
 		return nil, huma.Error401Unauthorized("username or password is incorrect")
 	}
 
-	token, err := h.issueToken(found.ID)
+	token, err := h.issueToken(found)
 	if err != nil {
 		log.Printf("login issue token: %v", err)
 		return nil, huma.Error500InternalServerError("could not issue token", err)
@@ -132,7 +132,7 @@ func (h *Handler) SetPassword(
 	ctx context.Context,
 	i *RequestSetPassword,
 ) (*domain.ResponseID[string], error) {
-	playerID, ok := ctxutil.GetPlayerID(ctx)
+	ctxPlr, ok := ctxutil.GetPlayer(ctx)
 	if !ok {
 		return nil, huma.Error401Unauthorized("player id is invalid")
 	}
@@ -142,13 +142,14 @@ func (h *Handler) SetPassword(
 		log.Printf("find one by username %v: %v", i.Body.Username, err)
 		return nil, huma.Error401Unauthorized("player not found")
 	}
-	if found.ID != playerID {
-		log.Printf("player %v access to %v", playerID, found.ID)
+	if !ctxPlr.IsAdmin && (found.ID != ctxPlr.ID) {
+		log.Printf("player %v access to %v", ctxPlr, found.ID)
 		return nil, huma.Error403Forbidden("player cannot access this entity")
 	}
 
 	nPlayer := player.PlayerUpdate{
-		ID:       playerID,
+		ID:       found.ID,
+		Username: &found.Username,
 		Password: &i.Body.Password,
 	}
 	if err := nPlayer.Valid(); err != nil {
@@ -175,15 +176,23 @@ func (h *Handler) SetPassword(
 	return &resp, nil
 }
 
-func (h *Handler) issueToken(playerID string) (string, error) {
+func (h *Handler) issueToken(p *player.Player) (string, error) {
 	now := time.Now()
+	audience := []string{apiutil.RolePlayer}
+
+	if p.IsAdmin {
+		audience = append(audience, apiutil.RoleAdmin)
+	}
+
 	claims := jwt.RegisteredClaims{
 		ID:        uuid.NewString(),
-		Subject:   playerID,
+		Subject:   p.ID,
 		ExpiresAt: jwt.NewNumericDate(now.Add(defaultExpiration)),
 		NotBefore: jwt.NewNumericDate(now),
 		IssuedAt:  jwt.NewNumericDate(now),
+		Audience:  audience,
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	token := jwt.NewWithClaims(apiutil.DefaultSigningMethod, claims)
 	return token.SignedString([]byte(h.secret))
 }
