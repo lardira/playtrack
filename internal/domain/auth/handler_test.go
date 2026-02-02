@@ -111,9 +111,9 @@ func TestSetPassword(t *testing.T) {
 	playerRepository := NewMockPlayerRepository(t)
 	handler := NewHandler(testSecret, playerRepository)
 
-	newID := uuid.NewString()
+	playerID := uuid.NewString()
 	username := testutil.Faker().Username()
-	ctx := ctxutil.SetPlayer(t.Context(), ctxutil.CtxPlayer{ID: newID})
+	ctx := ctxutil.SetPlayer(t.Context(), ctxutil.CtxPlayer{ID: playerID})
 
 	req := RequestSetPassword{}
 	req.Body.Username = username
@@ -124,7 +124,7 @@ func TestSetPassword(t *testing.T) {
 	playerRepository.
 		On("FindOneByUsername", ctx, username).
 		Once().
-		Return(&player.Player{ID: newID, Username: username}, nil)
+		Return(&player.Player{ID: playerID, Username: username}, nil)
 
 	playerRepository.
 		On(
@@ -138,11 +138,11 @@ func TestSetPassword(t *testing.T) {
 				return true
 			})).
 		Once().
-		Return(newID, nil)
+		Return(playerID, nil)
 
 	resp, err := handler.SetPassword(ctx, &req)
 	assert.NoError(t, err)
-	assert.Equal(t, newID, resp.Body.ID)
+	assert.Equal(t, playerID, resp.Body.ID)
 
 	assert.True(t, password.CompareHash(req.Body.Password, *constructedPlayer.Password))
 }
@@ -169,6 +169,47 @@ func TestSetPassword_DifferentPlayer(t *testing.T) {
 
 	_, err := handler.SetPassword(ctx, &req)
 	assert.Error(t, err)
+}
+
+func TestSetPassword_DifferentPlayer_AsAdmin(t *testing.T) {
+	playerRepository := NewMockPlayerRepository(t)
+	handler := NewHandler(testSecret, playerRepository)
+
+	adminID := uuid.NewString()
+	diffID := uuid.NewString()
+	username := testutil.Faker().Username()
+	ctx := ctxutil.SetPlayer(t.Context(), ctxutil.CtxPlayer{ID: adminID, IsAdmin: true})
+
+	req := RequestSetPassword{}
+	req.Body.Username = username
+	req.Body.Password = testutil.Faker().Password(true, true, true, true, false, player.MinPasswordLength)
+
+	var constructedPlayer *player.PlayerUpdate
+
+	playerRepository.
+		On("FindOneByUsername", ctx, username).
+		Once().
+		Return(&player.Player{ID: diffID, Username: username}, nil)
+
+	playerRepository.
+		On(
+			"Update",
+			ctx,
+			mock.MatchedBy(func(p *player.PlayerUpdate) bool {
+				if p == nil || p.Password == nil || p.ID == "" {
+					return false
+				}
+				constructedPlayer = p
+				return true
+			})).
+		Once().
+		Return(diffID, nil)
+
+	resp, err := handler.SetPassword(ctx, &req)
+	assert.NoError(t, err)
+	assert.Equal(t, diffID, resp.Body.ID)
+
+	assert.True(t, password.CompareHash(req.Body.Password, *constructedPlayer.Password))
 }
 
 func TestIssueToken(t *testing.T) {

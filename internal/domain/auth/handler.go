@@ -142,7 +142,7 @@ func (h *Handler) SetPassword(
 		log.Printf("find one by username %v: %v", i.Body.Username, err)
 		return nil, huma.Error401Unauthorized("player not found")
 	}
-	if found.ID != ctxPlr.ID {
+	if !ctxPlr.IsAdmin && (found.ID != ctxPlr.ID) {
 		log.Printf("player %v access to %v", ctxPlr, found.ID)
 		return nil, huma.Error403Forbidden("player cannot access this entity")
 	}
