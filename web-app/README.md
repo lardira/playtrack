@@ -1,38 +1,43 @@
-# Playtrack — фронтенд
+# playtrack frontend
 
-SvelteKit-приложение для проекта Playtrack.
+playtrack frontend built on svelte
 
-## Запуск
+## Quick Start
 
-Переходим в web-app/
+### Prerequisites
+
+- node v(?)
+
+
+### Installation
+
+cd `./web-app`
 
 ```bash
-# Установка зависимостей
-npm install
+# install dependencies from .lock file
+npm ci
 
-# Режим разработки (по умолчанию http://localhost:5173)
+# (default http://localhost:5173)
 npm run dev
 ```
 
-Открой в браузере [http://localhost:5173](http://localhost:5173).
+open [http://localhost:5173](http://localhost:5173)
 
-## Сборка
+## Build
 
 ```bash
 npm run build
 ```
 
-Собранные файлы появятся в каталоге `build/`.
+built files are placed in `build/`.
 
-Проверить продакшен-сборку локально:
-
+you can preview prod build by running
 ```bash
 npm run preview
 ```
 
-## Остальное
+## Misc.
 
-- **Проверка типов:** `npm run check`
-- **Тесты:** `npm run test`
+- **Check types:** `npm run check`
+- **Tests:** `npm run test`
 
-Для работы логина и данных нужен запущенный бэкенд API (например, на порту 5000).
