@@ -9,7 +9,7 @@ import (
 	"github.com/lardira/playtrack/internal/pkg/testutil"
 )
 
-func TestGetSetPlayerID(t *testing.T) {
+func TestGetSetPlayer(t *testing.T) {
 	playerID := uuid.NewString()
 	isAdmin := testutil.Faker().Bool()
 
@@ -28,7 +28,7 @@ func TestGetSetPlayerID(t *testing.T) {
 	assert.Equal(t, parsed, ctxPlayer)
 }
 
-func TestGetSetPlayerID_NoValue(t *testing.T) {
+func TestGetSetPlayer_NoValue(t *testing.T) {
 	ctx := context.Background()
 
 	parsed, ok := GetPlayer(ctx)
@@ -36,7 +36,7 @@ func TestGetSetPlayerID_NoValue(t *testing.T) {
 	assert.Zero(t, parsed)
 }
 
-func TestGetSetPlayerID_IDNotSet(t *testing.T) {
+func TestGetSetPlayer_IDNotSet(t *testing.T) {
 	ctx := SetPlayer(context.Background(), CtxPlayer{})
 
 	parsed, ok := GetPlayer(ctx)
