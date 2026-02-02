@@ -1,0 +1,14 @@
+.env
+.env.*
+*.log
+vendor/
+.git/
+.idea/
+.vscode/
+.DS_Store
+docker-compose.yml
+Dockerfile
+*.md
+bin/
+tmp/
+.local
