@@ -56,7 +56,7 @@ func (h *Handler) Register(api huma.API) {
 	huma.Register(grp, huma.Operation{
 		OperationID: "login",
 		Method:      http.MethodPost,
-		Path:        "/loing",
+		Path:        "/login",
 		Summary:     "login",
 		Description: "login a player in order to get a jwt token",
 	}, h.Login)
