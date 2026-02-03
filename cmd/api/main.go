@@ -14,8 +14,10 @@ import (
 )
 
 func init() {
-	if err := envutil.LoadEnvs(); err != nil {
-		log.Fatal(err)
+	if envutil.GetOrDefault("LOAD_ENV_FILE", "0") == "1" {
+		if err := envutil.LoadEnvs(); err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
