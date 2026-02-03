@@ -3,7 +3,7 @@ import { browser } from '$app/environment';
 import { getTokenFromCookie } from './cookies';
 import { getCurrentToken } from './tokenHolder';
 
-const baseURL = '/api';
+const baseURL = import.meta.env.PUBLIC_API_URL || '/api'
 
 export async function api<T>(url: string, options: RequestInit = {}): Promise<T> {
     const token = browser ? (getTokenFromCookie() ?? getCurrentToken()) : null;
