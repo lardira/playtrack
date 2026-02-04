@@ -54,11 +54,11 @@ var (
 type Player struct {
 	ID          string    `json:"id" format:"uuid"`
 	Username    string    `json:"username"`
+	Password    string    `json:"-"`
+	IsAdmin     bool      `json:"is_admin"`
 	Img         *string   `json:"img" required:"false"`
 	Email       *string   `json:"email" format:"email" required:"false"`
-	Password    string    `json:"-"`
 	Description *string   `json:"description"`
-	IsAdmin     bool      `json:"is_admin"`
 	CreatedAt   time.Time `json:"created_at"`
 }
 
