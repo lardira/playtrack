@@ -82,7 +82,7 @@ func (r *PGPlayedRepository) FindLastNotReroll(ctx context.Context, playerID str
 		PlaceholderFormat(sq.Dollar).
 		From(TablePlayedGame).
 		Where(sq.Eq{"player_id": playerID}, sq.NotEq{"status": PlayedGameStatusRerolled}).
-		OrderBy("started_at DESC").
+		OrderBy("started_at::date DESC", "completed_at::date DESC", "id DESC").
 		Limit(1).
 		Offset(1)
 
