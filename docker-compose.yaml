@@ -14,17 +14,18 @@ services:
       - proxy
 
   postgres-db:
-    image: postgres:alpine
+    image: postgres:18-alpine
     restart: unless-stopped
     shm_size: 128mb
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
+      PGDATA: /var/lib/postgresql/18/docker
     ports:
       - "5432:5432"
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql
     networks:
       - api
     healthcheck:
@@ -61,6 +62,7 @@ services:
 
 volumes:
   pg_data:
+    name: playtrack_pg_data
 
 networks:
   proxy:
