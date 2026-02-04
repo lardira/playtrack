@@ -36,7 +36,8 @@ func (r *PGPlayedRepository) FindAll(ctx context.Context, playerID string) ([]Pl
 	sqlBuild := sq.Select(playedGameColumns).
 		PlaceholderFormat(sq.Dollar).
 		From(TablePlayedGame).
-		Where(sq.Eq{"player_id": playerID})
+		Where(sq.Eq{"player_id": playerID}).
+		OrderBy("completed_at::date DESC", "id DESC")
 
 	query, args, err := sqlBuild.ToSql()
 	if err != nil {
