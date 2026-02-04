@@ -74,11 +74,14 @@ func TestUpdate(t *testing.T) {
 		Once().
 		Return(player.ID, nil)
 
+	description := testutil.Faker().Blurb()
+
 	req := RequestUpdatePlayer{}
 	req.PlayerID = player.ID
 	req.Body.Username = &player.Username
 	req.Body.Img = player.Img
 	req.Body.Email = player.Email
+	req.Body.Description = &description
 
 	resp, err := handler.Update(ctx, &req)
 	assert.NoError(t, err)

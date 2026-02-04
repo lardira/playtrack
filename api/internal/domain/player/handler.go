@@ -149,10 +149,11 @@ func (h *Handler) Update(
 	}
 
 	nPlayer := PlayerUpdate{
-		ID:       i.PlayerID,
-		Username: i.Body.Username,
-		Img:      i.Body.Img,
-		Email:    i.Body.Email,
+		ID:          i.PlayerID,
+		Username:    i.Body.Username,
+		Img:         i.Body.Img,
+		Email:       i.Body.Email,
+		Description: i.Body.Description,
 	}
 	if err := nPlayer.Valid(); err != nil {
 		log.Printf("player valid: %v", err)
