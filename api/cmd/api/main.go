@@ -14,6 +14,7 @@ import (
 )
 
 func init() {
+	// TODO: move to environment mode type
 	if envutil.GetOrDefault("LOAD_ENV_FILE", "0") == "1" {
 		if err := envutil.LoadEnvs(); err != nil {
 			log.Fatal(err)

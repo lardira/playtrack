@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-      - "443:80"
+      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
@@ -15,7 +15,7 @@ services:
 
   postgres-db:
     image: postgres:alpine
-    restart: always
+    restart: unless-stopped
     shm_size: 128mb
     environment:
       POSTGRES_USER: ${DB_USER}
@@ -27,35 +27,37 @@ services:
       - pg_data:/var/lib/postgresql/data
     networks:
       - api
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER"]
+      interval: 10s
+      retries: 5
 
   api:
     build: api/.
     restart: unless-stopped
-    depends_on:
-      - postgres-db
     environment:
-      SERVER_HOST: "0.0.0.0"
-      SERVER_PORT: 5000
+      SERVER_HOST: ${SERVER_HOST}
+      SERVER_PORT: ${SERVER_PORT}
       JWT_TOKEN_SECRET: ${JWT_TOKEN_SECRET}
-      DB_HOST: postgres-db
-      DB_URL: "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
+      DB_URL: ${DB_URL}
     networks:
       - proxy
-      - frontend
       - api
+    depends_on:
+      postgres-db:
+        condition: service_healthy
 
   svelte:
     build: web-app/.
     restart: unless-stopped
-    depends_on:
-      - api
     environment:
-      NODE_ENV: production
-      HOST: "0.0.0.0"
-      PORT: 3000
+      NODE_ENV: ${FRONT_NODE_ENV}
+      HOST: ${FRONT_HOST}
+      PORT: ${FRONT_PORT}
     networks:
       - proxy
-      - frontend
+    depends_on:
+      - api
 
 volumes:
   pg_data:

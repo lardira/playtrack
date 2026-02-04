@@ -2,3 +2,6 @@
 *.vscode/
 *.idea/
 *.local/
+
+.env
+!.env.template
