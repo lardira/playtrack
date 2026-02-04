@@ -9,8 +9,8 @@ import (
 type RequestUpdatePlayer struct {
 	PlayerID string `path:"id" format:"uuid"`
 	Body     struct {
-		Username *string `json:"username" required:"false"`
-		Img      *string `json:"img" required:"false"`
+		Username *string `json:"username" minLength:"4" maxLength:"32" required:"false"`
+		Img      *string `json:"img" format:"uri" required:"false"`
 		Email    *string `json:"email" format:"email" required:"false"`
 	}
 }
