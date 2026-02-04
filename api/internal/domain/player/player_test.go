@@ -245,12 +245,13 @@ func validPlayer() Player {
 	password := testutil.Faker().Password(true, true, true, true, false, MinPasswordLength)
 
 	return Player{
-		ID:        uuid.NewString(),
-		Username:  testutil.Faker().Username(),
-		Img:       &url,
-		Email:     &email,
-		Password:  password,
-		CreatedAt: testutil.Faker().Date(),
+		ID:          uuid.NewString(),
+		Username:    testutil.Faker().Username(),
+		Img:         &url,
+		Email:       &email,
+		Password:    password,
+		Description: &testutil.Faker().Address().Address,
+		CreatedAt:   testutil.Faker().Date(),
 	}
 }
 

@@ -10,7 +10,9 @@ import (
 )
 
 var (
-	playerColumns     string = "id, username, img, email, password, created_at, is_admin"
+	playerColumns string = `id, username, img, email, password,
+	created_at, is_admin, description`
+
 	playedGameColumns string = `id, player_id, game_id, points, comment, 
 	rating, status, started_at, completed_at, play_time`
 )
@@ -134,6 +136,9 @@ func (r *PGRepository) Update(ctx context.Context, player *PlayerUpdate) (string
 	if player.Password != nil {
 		updBuild = updBuild.Set("password", *player.Password)
 	}
+	if player.Description != nil {
+		updBuild = updBuild.Set("description", *player.Description)
+	}
 
 	query, args, err := updBuild.Where(sq.Eq{"id": player.ID}).Suffix("RETURNING id").ToSql()
 	if err != nil {
@@ -158,6 +163,7 @@ func playerFromRow(row pgx.Row) (*Player, error) {
 		&p.Password,
 		&p.CreatedAt,
 		&p.IsAdmin,
+		&p.Description,
 	)
 	if err != nil {
 		return nil, err

@@ -52,13 +52,14 @@ var (
 )
 
 type Player struct {
-	ID        string    `json:"id" format:"uuid"`
-	Username  string    `json:"username"`
-	Img       *string   `json:"img" required:"false"`
-	Email     *string   `json:"email" format:"email" required:"false"`
-	Password  string    `json:"-"`
-	IsAdmin   bool      `json:"is_admin"`
-	CreatedAt time.Time `json:"created_at"`
+	ID          string    `json:"id" format:"uuid"`
+	Username    string    `json:"username"`
+	Img         *string   `json:"img" required:"false"`
+	Email       *string   `json:"email" format:"email" required:"false"`
+	Password    string    `json:"-"`
+	Description *string   `json:"description"`
+	IsAdmin     bool      `json:"is_admin"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 func (p *Player) Valid() error {
@@ -72,11 +73,12 @@ func (p *Player) Valid() error {
 }
 
 type PlayerUpdate struct {
-	ID       string
-	Username *string
-	Img      *string
-	Email    *string
-	Password *string
+	ID          string
+	Username    *string
+	Img         *string
+	Email       *string
+	Password    *string
+	Description *string
 }
 
 func (p *PlayerUpdate) Valid() error {
