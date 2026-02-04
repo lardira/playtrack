@@ -297,11 +297,15 @@ func (h *Handler) UpdatePlayedGame(
 			}
 
 			nGame.Points = &newPoints
-			nGame.CompletedAt = &now
+			if nGame.CompletedAt == nil {
+				nGame.CompletedAt = &now
+			}
 
 		case PlayedGameStatusRerolled:
 			nGame.Points = &newPoints
-			nGame.CompletedAt = &now
+			if nGame.CompletedAt == nil {
+				nGame.CompletedAt = &now
+			}
 		}
 	}
 
