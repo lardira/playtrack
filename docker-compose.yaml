@@ -29,7 +29,7 @@ services:
       - api
 
   api:
-    build: .
+    build: api/.
     restart: unless-stopped
     depends_on:
       - postgres-db
