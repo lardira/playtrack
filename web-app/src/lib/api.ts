@@ -146,7 +146,7 @@ export const updatePlayer = async (playerId: string, data: UpdatePlayerRequest):
         method: 'PATCH',
         body: JSON.stringify(data)
     });
-    const id = (response as any).Body?.id ?? (response as any).body?.id;
+    const id = (response as any)?.id;
     if (!id) throw new Error('No id in response');
     return { id };
 };
@@ -181,7 +181,7 @@ export const createPlayedGame = async (playerId: string, gameId: number): Promis
             body: JSON.stringify({ game_id: gameId })
         }
     );
-    const id = (response as any).Body?.id ?? (response as any).body?.id ?? (response as any).id;
+    const id = (response as any)?.id;
     if (id == null) throw new Error('No id in response');
     return { id };
 };
