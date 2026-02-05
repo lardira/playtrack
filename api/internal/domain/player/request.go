@@ -31,8 +31,8 @@ type RequestUpdatePlayedGame struct {
 		Comment     *string               `json:"comment" required:"false"`
 		Rating      *int                  `json:"rating" required:"false"`
 		Status      *PlayedGameStatus     `json:"status" required:"false"`
-		CompletedAt *time.Time            `json:"completed_at" required:"false"`
-		StartedAt   *time.Time            `json:"started_at" required:"false"`
+		StartedAt   *time.Time            `json:"started_at" dependentRequired:"completed_at" required:"false"`
+		CompletedAt *time.Time            `json:"completed_at" dependentRequired:"started_at" required:"false"`
 		PlayTime    *types.DurationString `json:"play_time" required:"false"`
 	}
 }
