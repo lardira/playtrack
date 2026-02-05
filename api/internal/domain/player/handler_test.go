@@ -453,6 +453,72 @@ func TestUpdatePlayedGame_Reroll(t *testing.T) {
 	assert.Equal(t, played[1].ID, resp.Body.ID)
 }
 
+func TestUpdatePlayedGame_DropAfterReroll(t *testing.T) {
+	played := []PlayedGame{
+		validPlayedGame(),
+		validPlayedGame(),
+		validPlayedGame(),
+	}
+
+	player := validPlayer()
+	played[0].PlayerID = player.ID
+	played[0].Status = PlayedGameStatusDropped
+	played[0].Points = -1
+	played[1].PlayerID = player.ID
+	played[1].Status = PlayedGameStatusRerolled
+	played[1].Points = 0
+	played[2].PlayerID = player.ID
+	played[2].Status = PlayedGameStatusInProgress
+	played[2].Points = -2
+
+	ctx := ctxutil.SetPlayer(t.Context(), ctxutil.CtxPlayer{ID: player.ID, IsAdmin: player.IsAdmin})
+
+	playerRepository := NewMockPlayerRepository(t)
+	gameRepository := NewMockGameRepository(t)
+	playedGameRepository := NewMockPlayedGameRepository(t)
+
+	handler := NewHandler(playerRepository, gameRepository, playedGameRepository)
+
+	playedGameRepository.
+		On("FindOne", ctx, player.ID, played[2].ID).
+		Once().
+		Return(&played[2], nil)
+
+	playedGameRepository.
+		On("FindLastNotReroll", ctx, player.ID).
+		Once().
+		Return(&played[0], nil)
+
+	var updPlayed PlayedGameUpdate
+	playedGameRepository.
+		On("Update", ctx, mock.MatchedBy(func(p *PlayedGameUpdate) bool {
+			if p.Points == nil || *p.Points != played[2].Points {
+				return false
+			}
+			if p.CompletedAt == nil {
+				return false
+			}
+			updPlayed = *p
+			return true
+		})).
+		Once().
+		Return(played[2].ID, nil)
+
+	newStatus := PlayedGameStatusDropped
+	req := RequestUpdatePlayedGame{}
+	req.PlayerID = player.ID
+	req.GameID = played[2].ID
+	req.Body.Rating = played[2].Rating
+	req.Body.Status = &newStatus
+
+	resp, err := handler.UpdatePlayedGame(ctx, &req)
+	assert.NoError(t, err)
+	assert.NotEqual(t, nil, resp)
+	assert.Equal(t, played[2].ID, resp.Body.ID)
+
+	assert.Equal(t, played[2].Points, *updPlayed.Points)
+}
+
 func TestContainsNonterminatedPlayed(t *testing.T) {
 	playerRepository := NewMockPlayerRepository(t)
 	gameRepository := NewMockGameRepository(t)

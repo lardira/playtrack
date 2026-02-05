@@ -258,6 +258,7 @@ func (h *Handler) UpdatePlayedGame(
 		Rating:      i.Body.Rating,
 		Status:      i.Body.Status,
 		CompletedAt: i.Body.CompletedAt,
+		StartedAt:   i.Body.StartedAt,
 		PlayTime:    i.Body.PlayTime,
 	}
 	if err := nGame.Valid(); err != nil {

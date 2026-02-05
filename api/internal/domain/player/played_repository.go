@@ -81,8 +81,8 @@ func (r *PGPlayedRepository) FindLastNotReroll(ctx context.Context, playerID str
 	sqlBuild := sq.Select(playedGameColumns).
 		PlaceholderFormat(sq.Dollar).
 		From(TablePlayedGame).
-		Where(sq.Eq{"player_id": playerID}, sq.NotEq{"status": PlayedGameStatusRerolled}).
-		OrderBy("started_at::date DESC", "completed_at::date DESC", "id DESC").
+		Where(sq.And{sq.Eq{"player_id": playerID}, sq.NotEq{"status": PlayedGameStatusRerolled}}).
+		OrderBy("completed_at::date DESC", "id DESC").
 		Limit(1).
 		Offset(1)
 
@@ -138,6 +138,9 @@ func (r *PGPlayedRepository) Update(ctx context.Context, game *PlayedGameUpdate)
 	}
 	if game.Status != nil {
 		updBuild = updBuild.Set("status", *game.Status)
+	}
+	if game.StartedAt != nil {
+		updBuild = updBuild.Set("started_at", *game.StartedAt)
 	}
 	if game.CompletedAt != nil {
 		updBuild = updBuild.Set("completed_at", *game.CompletedAt)
