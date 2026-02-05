@@ -231,10 +231,9 @@ func TestPlayedGameUpdateValid(t *testing.T) {
 			"completed equal started",
 			func() PlayedGameUpdate {
 				g := validPlayedGameUpdate()
-				completedAt := time.Now()
-				startedAt := time.Now()
-				g.CompletedAt = &completedAt
-				g.StartedAt = &startedAt
+				now := time.Now()
+				g.CompletedAt = &now
+				g.StartedAt = &now
 				return g
 			},
 			ErrCompletedEqLessStarted,
