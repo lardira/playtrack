@@ -4,7 +4,7 @@ import { getTokenFromCookie } from './cookies';
 import { getCurrentToken } from './tokenHolder';
 import { env } from '$env/dynamic/public';
 
-const baseURL = env?.PUBLIC_API_URL ?? '/api'
+const baseURL = env.PUBLIC_API_URL ?? '/api'
 
 export async function api<T>(url: string, options: RequestInit = {}): Promise<T> {
     const token = browser ? (getTokenFromCookie() ?? getCurrentToken()) : null;
