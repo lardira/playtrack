@@ -17,7 +17,6 @@ import (
 	"github.com/lardira/playtrack/internal/middleware"
 	"github.com/lardira/playtrack/internal/pkg/envutil"
 	"github.com/lardira/playtrack/internal/tech"
-	"github.com/rs/cors"
 )
 
 type Options struct {
@@ -48,12 +47,8 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 	var servHandler http.Handler = mux
 
 	if envutil.GetEnvMode() == envutil.EnvModeDevelopment {
-		servHandler = cors.New(cors.Options{
-			AllowedOrigins:   []string{"*"},
-			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
-			AllowedHeaders:   []string{"*"},
-			AllowCredentials: true,
-		}).Handler(mux)
+		log.Println("CORS is set")
+		servHandler = middleware.CORS(mux)
 	}
 
 	server := http.Server{
@@ -70,7 +65,6 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 		middleware.Authorize(opts.JWTSecret),
 	)
 
-	// TODO: use squirell for query building
 	gameRepository := game.NewPGRepository(dbpool)
 	playerRepository := player.NewPGRepository(dbpool)
 	playedGameRepository := player.NewPGPlayedRepository(dbpool)

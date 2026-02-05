@@ -2,16 +2,17 @@ import type { Player, LeaderboardPlayer, PlayedGame, Game, AuthResponse } from '
 import { browser } from '$app/environment';
 import { getTokenFromCookie } from './cookies';
 import { getCurrentToken } from './tokenHolder';
+import { env } from '$env/dynamic/public';
 
-const baseURL = import.meta.env.PUBLIC_API_URL || '/api'
+const baseURL = env?.PUBLIC_API_URL ?? '/api'
 
 export async function api<T>(url: string, options: RequestInit = {}): Promise<T> {
     const token = browser ? (getTokenFromCookie() ?? getCurrentToken()) : null;
-    const headers: Record<string, string> = { 'Content-Type': 'application/json', 'mode': 'cors', 'credentials': 'include' };
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
     try {
-        const res = await fetch(baseURL + url, { ...options, headers });
+        const res = await fetch(baseURL + url, { ...options, headers, mode: 'cors', credentials:'include' });
         const text = await res.text();
 
         if (!res.ok) {
