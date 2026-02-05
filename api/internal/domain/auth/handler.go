@@ -79,7 +79,7 @@ func (h *Handler) Login(ctx context.Context, i *RequestLoginPlayer) (*ResponseLo
 		return nil, huma.Error401Unauthorized("username or password is incorrect")
 	}
 	if !password.CompareHash(i.Body.Password, found.Password) {
-		log.Printf("login compare hash: %v", err)
+		log.Printf("login compare hash error for user %s", i.Body.Username)
 		return nil, huma.Error401Unauthorized("username or password is incorrect")
 	}
 
