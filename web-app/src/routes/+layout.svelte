@@ -75,7 +75,7 @@
 					href="/"
 					class="cursor-pointer hover:opacity-80 transition-opacity"
 				>
-					<strong class="text-xl uppercase">PlayTracker</strong>
+					<strong class="text-xl uppercase">PlayTrack</strong>
 				</a>
 			</svelte:fragment>
 			<svelte:fragment slot="trail">
