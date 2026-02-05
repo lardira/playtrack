@@ -139,6 +139,9 @@ func (r *PGPlayedRepository) Update(ctx context.Context, game *PlayedGameUpdate)
 	if game.Status != nil {
 		updBuild = updBuild.Set("status", *game.Status)
 	}
+	if game.StartedAt != nil {
+		updBuild = updBuild.Set("started_at", *game.StartedAt)
+	}
 	if game.CompletedAt != nil {
 		updBuild = updBuild.Set("completed_at", *game.CompletedAt)
 	}

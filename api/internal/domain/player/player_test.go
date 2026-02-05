@@ -113,7 +113,7 @@ func TestPlayedGameValid(t *testing.T) {
 				g.StartedAt = time.Now()
 				return g
 			},
-			ErrCompletedBeforeStarted,
+			ErrCompletedEqLessStarted,
 		},
 		{
 			"min rating",
@@ -226,6 +226,17 @@ func TestPlayedGameUpdateValid(t *testing.T) {
 				return g
 			},
 			ErrGameRating,
+		},
+		{
+			"completed equal started",
+			func() PlayedGameUpdate {
+				g := validPlayedGameUpdate()
+				now := time.Now()
+				g.CompletedAt = &now
+				g.StartedAt = &now
+				return g
+			},
+			ErrCompletedEqLessStarted,
 		},
 	}
 
