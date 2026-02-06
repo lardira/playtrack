@@ -52,202 +52,178 @@ func TestPlayerValid(t *testing.T) {
 	}
 }
 
-func TestPlayerUpdateValid(t *testing.T) {
+func TestPlayedGame(t *testing.T) {
+	now := time.Now()
+	comment := testutil.Faker().Sentence()
+	rating := testutil.Faker().IntRange(minRating, maxRating)
+	validParams := PlayedGameParams{
+		PlayerID:  uuid.NewString(),
+		GameID:    testutil.Faker().Int(),
+		Points:    0,
+		Comment:   &comment,
+		Rating:    &rating,
+		Status:    PlayedGameStatusAdded,
+		StartedAt: now,
+		PlayTime:  &types.DurationString{},
+	}
+
 	tcases := []struct {
-		name   string
-		player func() PlayerUpdate
-		err    error
+		name    string
+		params  func() PlayedGameParams
+		wantErr error
 	}{
 		{
 			"valid",
-			validPlayerUpdate,
-			nil,
-		},
-		{
-			"password less than min",
-			func() PlayerUpdate {
-				p := validPlayerUpdate()
-				newPass := strings.Repeat("a", MinPasswordLength-1)
-				p.Password = &newPass
-				return p
+			func() PlayedGameParams {
+				return validParams
 			},
-			ErrPasswordMinLen,
-		},
-		{
-			"username less than min",
-			func() PlayerUpdate {
-				p := validPlayerUpdate()
-				newUsername := strings.Repeat("a", MinUsernameLength-1)
-				p.Username = &newUsername
-				return p
-			},
-			ErrUsernameMinLen,
-		},
-	}
-
-	for _, tt := range tcases {
-		t.Run(tt.name, func(t *testing.T) {
-			p := tt.player()
-			gotErr := p.Valid()
-
-			assert.IsError(t, tt.err, gotErr)
-		})
-	}
-}
-
-func TestPlayedGameValid(t *testing.T) {
-	tcases := []struct {
-		name string
-		game func() PlayedGame
-		err  error
-	}{
-		{
-			"valid",
-			validPlayedGame,
 			nil,
 		},
 		{
 			"completed before started",
-			func() PlayedGame {
-				g := validPlayedGame()
-				g.StartedAt = time.Now()
-				return g
+			func() PlayedGameParams {
+				p := validParams
+				p.CompletedAt = &now
+				return p
 			},
 			ErrCompletedEqLessStarted,
 		},
 		{
 			"min rating",
-			func() PlayedGame {
-				g := validPlayedGame()
+			func() PlayedGameParams {
+				p := validParams
 				r := minRating - 1
-				g.Rating = &r
-				return g
+				p.Rating = &r
+				return p
 			},
 			ErrGameRating,
 		},
 		{
 			"max rating",
-			func() PlayedGame {
-				g := validPlayedGame()
+			func() PlayedGameParams {
+				p := validParams
 				r := maxRating + 1
-				g.Rating = &r
-				return g
+				p.Rating = &r
+				return p
 			},
 			ErrGameRating,
 		},
+		{
+			"invalid player id",
+			func() PlayedGameParams {
+				p := validParams
+				p.PlayerID = testutil.Faker().Word()
+				return p
+			},
+			ErrPlayerID,
+		},
+		{
+			"comment too long",
+			func() PlayedGameParams {
+				p := validParams
+				c := strings.Repeat("t", MaxCommentLength+1)
+				p.Comment = &c
+				return p
+			},
+			ErrCommentLen,
+		},
 	}
 
 	for _, tt := range tcases {
 		t.Run(tt.name, func(t *testing.T) {
-			g := tt.game()
-			gotErr := g.Valid()
-
-			assert.IsError(t, tt.err, gotErr)
+			_, err := NewPlayedGame(tt.params())
+			assert.IsError(t, err, tt.wantErr)
 		})
 	}
 }
 
-func TestStatusTerminated(t *testing.T) {
+func TestPlayedGameSetStatus(t *testing.T) {
 	tcases := []struct {
-		name string
-		game func() PlayedGame
-		ok   bool
+		name      string
+		current   PlayedGameStatus
+		next      PlayedGameStatus
+		expectErr bool
 	}{
 		{
-			"completed",
-			func() PlayedGame {
-				g := validPlayedGame()
-				g.Status = PlayedGameStatusCompleted
-				return g
-			},
-			true,
+			name:      "valid next in progress",
+			current:   PlayedGameStatusAdded,
+			next:      PlayedGameStatusInProgress,
+			expectErr: false,
 		},
 		{
-			"in progress",
-			func() PlayedGame {
-				g := validPlayedGame()
-				g.Status = PlayedGameStatusInProgress
-				return g
-			},
-			false,
+			name:      "valid next in completed",
+			current:   PlayedGameStatusAdded,
+			next:      PlayedGameStatusCompleted,
+			expectErr: false,
+		},
+		{
+			name:      "valid in progresss next in completed",
+			current:   PlayedGameStatusInProgress,
+			next:      PlayedGameStatusCompleted,
+			expectErr: false,
+		},
+		{
+			name:      "invalid dropped next rerolled",
+			current:   PlayedGameStatusDropped,
+			next:      PlayedGameStatusRerolled,
+			expectErr: true,
+		},
+		{
+			name:      "invalid completed in progress",
+			current:   PlayedGameStatusCompleted,
+			next:      PlayedGameStatusInProgress,
+			expectErr: true,
 		},
 	}
-
 	for _, tt := range tcases {
 		t.Run(tt.name, func(t *testing.T) {
-			g := tt.game()
-			ok := g.StatusTerminated()
+			pg := validPlayedGame()
+			pg.Status = tt.current
 
-			assert.Equal(t, tt.ok, ok)
+			err := pg.SetStatus(tt.next)
+			assert.Equal(t, tt.expectErr, err != nil)
 		})
 	}
 }
 
-func TestStatusNextValid(t *testing.T) {
-	game := validPlayedGame()
-	game.Status = PlayedGameStatusInProgress
+func TestPlayedGameStatusTerminated(t *testing.T) {
+	tcases := []struct {
+		name   string
+		status PlayedGameStatus
+		ok     bool
+	}{
+		{
+			name:   "terminated completed",
+			status: PlayedGameStatusCompleted,
+			ok:     true,
+		},
+		{
+			name:   "terminated dropped",
+			status: PlayedGameStatusDropped,
+			ok:     true,
+		},
+		{
+			name:   "terminated in progress",
+			status: PlayedGameStatusInProgress,
+			ok:     false,
+		},
+	}
+	for _, tt := range tcases {
+		t.Run(tt.name, func(t *testing.T) {
+			pg := validPlayedGame()
+			pg.Status = tt.status
 
-	err := game.StatusNextValid(PlayedGameStatusCompleted)
+			assert.Equal(t, tt.ok, pg.StatusTerminated())
+		})
+	}
+}
+func TestPlayedGameComplete(t *testing.T) {
+	pg := validPlayedGame()
+	pg.StartedAt = time.Now().Add(-2 * time.Hour)
+
+	err := pg.Complete()
 	assert.NoError(t, err)
-
-	game.Status = PlayedGameStatusCompleted
-
-	err = game.StatusNextValid(PlayedGameStatusInProgress)
-	assert.Error(t, err)
-}
-
-func TestPlayedGameUpdateValid(t *testing.T) {
-	tcases := []struct {
-		name string
-		game func() PlayedGameUpdate
-		err  error
-	}{
-		{
-			"valid",
-			validPlayedGameUpdate,
-			nil,
-		},
-		{
-			"min rating",
-			func() PlayedGameUpdate {
-				g := validPlayedGameUpdate()
-				r := minRating - 1
-				g.Rating = &r
-				return g
-			},
-			ErrGameRating,
-		},
-		{
-			"max rating",
-			func() PlayedGameUpdate {
-				g := validPlayedGameUpdate()
-				r := maxRating + 1
-				g.Rating = &r
-				return g
-			},
-			ErrGameRating,
-		},
-		{
-			"completed equal started",
-			func() PlayedGameUpdate {
-				g := validPlayedGameUpdate()
-				now := time.Now()
-				g.CompletedAt = &now
-				g.StartedAt = &now
-				return g
-			},
-			ErrCompletedEqLessStarted,
-		},
-	}
-
-	for _, tt := range tcases {
-		t.Run(tt.name, func(t *testing.T) {
-			g := tt.game()
-			err := g.Valid()
-
-			assert.IsError(t, tt.err, err)
-		})
-	}
+	assert.NotEqual(t, nil, pg.CompletedAt)
 }
 
 func validPlayer() Player {
@@ -267,55 +243,20 @@ func validPlayer() Player {
 }
 
 func validPlayedGame() PlayedGame {
-	comment := testutil.Faker().Comment()
-	completedAt := time.Now()
-	playTime := types.NewDurationString(1 * time.Hour)
+	now := time.Now()
+	comment := testutil.Faker().Sentence()
 	rating := testutil.Faker().IntRange(minRating, maxRating)
-
-	return PlayedGame{
-		ID:          testutil.Faker().Int(),
-		PlayerID:    uuid.NewString(),
-		GameID:      testutil.Faker().Int(),
-		Points:      testutil.Faker().Int(),
-		Comment:     &comment,
-		Rating:      &rating,
-		Status:      PlayedGameStatusCompleted,
-		StartedAt:   time.Now().Add(-1 * time.Hour),
-		CompletedAt: &completedAt,
-		PlayTime:    &playTime,
+	validParams := PlayedGameParams{
+		PlayerID:  uuid.NewString(),
+		GameID:    testutil.Faker().Int(),
+		Points:    0,
+		Comment:   &comment,
+		Rating:    &rating,
+		Status:    PlayedGameStatusAdded,
+		StartedAt: now,
+		PlayTime:  &types.DurationString{},
 	}
-}
 
-func validPlayerUpdate() PlayerUpdate {
-	url := testutil.Faker().URL()
-	username := testutil.Faker().Username()
-	email := testutil.Faker().Email()
-	password := testutil.Faker().Password(true, true, true, true, false, MinPasswordLength)
-
-	return PlayerUpdate{
-		ID:       uuid.NewString(),
-		Img:      &url,
-		Username: &username,
-		Email:    &email,
-		Password: &password,
-	}
-}
-
-func validPlayedGameUpdate() PlayedGameUpdate {
-	comment := testutil.Faker().Comment()
-	completedAt := time.Now()
-	playTime := types.NewDurationString(1 * time.Hour)
-	rating := testutil.Faker().IntRange(minRating, maxRating)
-	points := testutil.Faker().Int()
-	status := PlayedGameStatusCompleted
-
-	return PlayedGameUpdate{
-		ID:          testutil.Faker().Int(),
-		Points:      &points,
-		Comment:     &comment,
-		Rating:      &rating,
-		Status:      &status,
-		CompletedAt: &completedAt,
-		PlayTime:    &playTime,
-	}
+	pg, _ := NewPlayedGame(validParams)
+	return *pg
 }

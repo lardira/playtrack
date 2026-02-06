@@ -2,52 +2,27 @@ package player
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/lardira/playtrack/internal/domain"
-	"github.com/lardira/playtrack/internal/domain/game"
 	"github.com/lardira/playtrack/internal/pkg/ctxutil"
 )
 
-type PlayerRepository interface {
-	FindAll(context.Context) ([]Player, error)
-	FindOne(ctx context.Context, id string) (*Player, error)
-	Insert(context.Context, *Player) (string, error)
-	Update(ctx context.Context, player *PlayerUpdate) (string, error)
-}
-
-type PlayedGameRepository interface {
-	FindAll(ctx context.Context, playerID string) ([]PlayedGame, error)
-	FindOne(ctx context.Context, playerID string, id int) (*PlayedGame, error)
-	FindLastNotReroll(ctx context.Context, playerID string) (*PlayedGame, error)
-	Insert(ctx context.Context, player *PlayedGame) (int, error)
-	Update(ctx context.Context, game *PlayedGameUpdate) (int, error)
-}
-
-type GameRepository interface {
-	FindOne(ctx context.Context, id int) (*game.Game, error)
-}
-
 type Handler struct {
+	playerService        *Service
 	playerRepository     PlayerRepository
 	playedGameRepository PlayedGameRepository
-	gameRepository       GameRepository
 }
 
 func NewHandler(
+	playerService *Service,
 	playerRepository PlayerRepository,
-	gameRepository GameRepository,
 	playedGameRepository PlayedGameRepository,
 ) *Handler {
 	return &Handler{
-		playerRepository:     playerRepository,
-		playedGameRepository: playedGameRepository,
-		gameRepository:       gameRepository,
+		playerService: playerService,
 	}
 }
 
@@ -190,9 +165,8 @@ func (h *Handler) GetOnePlayedGame(ctx context.Context, i *struct {
 	PlayerID string `path:"id" format:"uuid"`
 	GameID   int    `path:"gameID"`
 }) (*domain.ResponseItem[PlayedGame], error) {
-	game, err := h.playedGameRepository.FindOne(ctx, i.PlayerID, i.GameID)
+	game, err := h.playerService.GetOnePlayedGame(ctx, i.GameID)
 	if err != nil {
-		log.Printf("played games find one: %v", err)
 		return nil, huma.Error500InternalServerError("find", err)
 	}
 
@@ -209,32 +183,9 @@ func (h *Handler) CreatePlayedGame(
 		return nil, huma.Error403Forbidden("player cannot access this entity")
 	}
 
-	game, err := h.gameRepository.FindOne(ctx, i.Body.GameID)
+	id, err := h.playerService.CreatePlayedGame(ctx, i.PlayerID, i.Body.GameID)
 	if err != nil {
-		log.Printf("game find one: %v", err)
-		return nil, huma.Error400BadRequest("game find", err)
-	}
-
-	nPlayed := PlayedGame{
-		PlayerID: i.PlayerID,
-		GameID:   i.Body.GameID,
-		Points:   game.Points,
-	}
-
-	if err := nPlayed.Valid(); err != nil {
-		log.Printf("played game valid: %v", err)
-		return nil, huma.Error400BadRequest("entity is not valid", err)
-	}
-
-	if err := h.containsNonterminatedPlayed(ctx, i.PlayerID); err != nil {
-		log.Printf("player %v contains nonterminated: %v", i.PlayerID, err)
-		return nil, err
-	}
-
-	id, err := h.playedGameRepository.Insert(ctx, &nPlayed)
-	if err != nil {
-		log.Printf("played game insert: %v", err)
-		return nil, huma.Error500InternalServerError("create", err)
+		return nil, huma.Error400BadRequest("create", err)
 	}
 
 	log.Printf("played game %v created", id)
@@ -251,91 +202,16 @@ func (h *Handler) UpdatePlayedGame(
 		return nil, huma.Error403Forbidden("player cannot access this entity")
 	}
 
-	nGame := PlayedGameUpdate{
-		ID:          i.GameID,
-		Points:      i.Body.Points,
-		Comment:     i.Body.Comment,
-		Rating:      i.Body.Rating,
-		Status:      i.Body.Status,
-		CompletedAt: i.Body.CompletedAt,
-		StartedAt:   i.Body.StartedAt,
-		PlayTime:    i.Body.PlayTime,
-	}
-	if err := nGame.Valid(); err != nil {
-		log.Printf("played game update valid: %v", err)
-		return nil, huma.Error400BadRequest("entity is not valid", err)
-	}
-
-	playedGame, err := h.playedGameRepository.FindOne(ctx, i.PlayerID, i.GameID)
+	id, err := h.playerService.UpdatePlayedGame(ctx, i.PlayerID, i.GameID, &i.Body)
 	if err != nil {
 		log.Printf("played find one: %v", err)
 		return nil, huma.Error400BadRequest("entity is not found", err)
-	}
-
-	if nGame.Status != nil {
-		newStatus := *nGame.Status
-		if err := playedGame.StatusNextValid(newStatus); err != nil {
-			log.Printf("played game %v next status check: %v", playedGame.ID, err)
-			return nil, huma.Error400BadRequest("entity is not valid", err)
-		}
-
-		newPoints := 0
-		now := time.Now()
-
-		switch newStatus {
-		case PlayedGameStatusDropped:
-			newPoints = -1
-
-			prevGame, err := h.playedGameRepository.FindLastNotReroll(ctx, i.PlayerID)
-			if err != nil && !errors.Is(err, ErrPlayedGameNotFound) {
-				log.Printf("last played game find: %v", err)
-				return nil, huma.Error400BadRequest("game played find", err)
-			}
-
-			// consecutive drops are stacked
-			if err == nil && prevGame.Status == PlayedGameStatusDropped {
-				newPoints = prevGame.Points - 1
-			}
-
-			nGame.Points = &newPoints
-			if nGame.CompletedAt == nil {
-				nGame.CompletedAt = &now
-			}
-
-		case PlayedGameStatusRerolled:
-			nGame.Points = &newPoints
-			if nGame.CompletedAt == nil {
-				nGame.CompletedAt = &now
-			}
-		}
-	}
-
-	id, err := h.playedGameRepository.Update(ctx, &nGame)
-	if err != nil {
-		log.Printf("played game update: %v", err)
-		return nil, huma.Error500InternalServerError("update", err)
 	}
 
 	log.Printf("played game %v updated", id)
 	resp := domain.ResponseID[int]{}
 	resp.Body.ID = id
 	return &resp, nil
-}
-
-func (h *Handler) containsNonterminatedPlayed(ctx context.Context, playerID string) error {
-	allPlayed, err := h.playedGameRepository.FindAll(ctx, playerID)
-	if err != nil {
-		return huma.Error400BadRequest("find played games", err)
-	}
-
-	for _, p := range allPlayed {
-		if !p.StatusTerminated() {
-			return huma.Error400BadRequest(
-				fmt.Sprintf("player has game in nonterminated status: %v", p.ID),
-			)
-		}
-	}
-	return nil
 }
 
 func checkAuthorizedFor(ctx context.Context, playerID string) bool {
