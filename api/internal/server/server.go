@@ -15,8 +15,8 @@ import (
 	"github.com/lardira/playtrack/internal/domain/game"
 	"github.com/lardira/playtrack/internal/domain/player"
 	"github.com/lardira/playtrack/internal/middleware"
+	"github.com/lardira/playtrack/internal/pkg/envutil"
 	"github.com/lardira/playtrack/internal/tech"
-	"github.com/rs/cors"
 )
 
 type Options struct {
@@ -44,16 +44,16 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 	healthChecker := tech.NewHealthChecker(dbpool, opts.CheckPollInterval, "postgres db")
 
 	mux := http.NewServeMux()
-	servMux := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
-		AllowedHeaders:   []string{"*"},
-		AllowCredentials: true,
-	}).Handler(mux)
+	var servHandler http.Handler = mux
+
+	if envutil.GetEnvMode() == envutil.EnvModeDevelopment {
+		log.Println("CORS is set")
+		servHandler = middleware.CORS(mux)
+	}
 
 	server := http.Server{
 		Addr:    fmt.Sprintf("%s:%s", opts.Host, opts.Port),
-		Handler: servMux,
+		Handler: servHandler,
 	}
 
 	config := huma.DefaultConfig("playtrack API", "1.0.0")
@@ -69,7 +69,6 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 		middleware.Authorize(opts.JWTSecret),
 	)
 
-	// TODO: use squirell for query building
 	gameRepository := game.NewPGRepository(dbpool)
 	playerRepository := player.NewPGRepository(dbpool)
 	playedGameRepository := player.NewPGPlayedRepository(dbpool)
