@@ -73,8 +73,10 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 	playerRepository := player.NewPGRepository(dbpool)
 	playedGameRepository := player.NewPGPlayedRepository(dbpool)
 
+	gameService := game.NewService(gameRepository)
+
 	techHandler := tech.NewHandler(healthChecker)
-	gameHandler := game.NewHandler(gameRepository)
+	gameHandler := game.NewHandler(gameService)
 	playerHandler := player.NewHandler(playerRepository, gameRepository, playedGameRepository)
 	authHandler := auth.NewHandler(opts.JWTSecret, playerRepository)
 

@@ -9,12 +9,13 @@ import (
 const (
 	MinGamePoints      = 1
 	MinGameHoursToBeat = 1
+	MinGameTitleLen    = 3
 )
 
 var (
-	ErrMinPoints          = fmt.Errorf("game must not have less than %d points", MinGamePoints)
 	ErrMinHoursToBeat     = fmt.Errorf("game must not have less than %d hours to beat", MinGameHoursToBeat)
 	ErrInvalidGameSiteURL = fmt.Errorf("invalid url")
+	ErrMinTitleLen        = fmt.Errorf("title length must not be less than %d", MinGameTitleLen)
 )
 
 type Game struct {
@@ -26,20 +27,23 @@ type Game struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
-func (g *Game) Valid() error {
-	if g.HoursToBeat < MinGameHoursToBeat {
-		return ErrMinHoursToBeat
+func NewGame(title string, hoursToBeat int, url *string) (*Game, error) {
+	nGame := Game{
+		Title:     title,
+		CreatedAt: time.Now(),
 	}
-	if g.Points < MinGamePoints {
-		return ErrMinPoints
-	}
-	if g.URL != nil {
-		if _, err := url.ParseRequestURI(*g.URL); err != nil {
-			return ErrInvalidGameSiteURL
+	if url != nil {
+		if err := nGame.SetURL(*url); err != nil {
+			return nil, err
 		}
 	}
-
-	return nil
+	if err := nGame.SetHoursToBeat(hoursToBeat); err != nil {
+		return nil, err
+	}
+	if len(nGame.Title) < MinGameTitleLen {
+		return nil, ErrMinTitleLen
+	}
+	return &nGame, nil
 }
 
 // CalculatePoints calculates and sets points in game
@@ -55,4 +59,23 @@ func (g *Game) CalculatePoints() {
 		// e.g. 1 + (10 - 2 + 3) / 4 = 3 points
 		g.Points = 1 + (g.HoursToBeat+1)/4
 	}
+}
+
+func (g *Game) SetHoursToBeat(hours int) error {
+	if hours < MinGameHoursToBeat {
+		return ErrMinHoursToBeat
+	}
+
+	g.HoursToBeat = hours
+	g.CalculatePoints()
+	return nil
+}
+
+func (g *Game) SetURL(u string) error {
+	if _, err := url.ParseRequestURI(u); err != nil {
+		return ErrInvalidGameSiteURL
+	}
+	g.URL = &u
+
+	return nil
 }
