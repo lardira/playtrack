@@ -61,6 +61,10 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 	apiV1 := huma.NewGroup(api, "/v1")
 	unsecApi := huma.NewGroup(api, "/pub")
 
+	api.UseMiddleware(
+		middleware.HealthCheck(api, healthChecker),
+	)
+
 	apiV1.UseMiddleware(
 		middleware.Authorize(opts.JWTSecret),
 	)
