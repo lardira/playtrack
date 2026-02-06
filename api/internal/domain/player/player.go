@@ -42,9 +42,9 @@ var (
 
 var (
 	terminatedStatus = map[PlayedGameStatus]struct{}{
-		PlayedGameStatusCompleted: struct{}{},
-		PlayedGameStatusDropped:   struct{}{},
-		PlayedGameStatusRerolled:  struct{}{},
+		PlayedGameStatusCompleted: {},
+		PlayedGameStatusDropped:   {},
+		PlayedGameStatusRerolled:  {},
 	}
 
 	validPlayedGameStatuses = map[PlayedGameStatus][]PlayedGameStatus{
