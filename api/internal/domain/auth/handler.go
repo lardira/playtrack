@@ -14,28 +14,21 @@ import (
 	"github.com/lardira/playtrack/internal/middleware"
 	"github.com/lardira/playtrack/internal/pkg/apiutil"
 	"github.com/lardira/playtrack/internal/pkg/ctxutil"
-	"github.com/lardira/playtrack/internal/pkg/password"
 )
 
 const (
 	defaultExpiration = 10 * 24 * time.Hour
 )
 
-type PlayerRepository interface {
-	FindOneByUsername(ctx context.Context, username string) (*player.Player, error)
-	Update(ctx context.Context, player *player.PlayerUpdate) (string, error)
-	Insert(context.Context, *player.Player) (string, error)
-}
-
 type Handler struct {
-	secret           string
-	playerRepository PlayerRepository
+	secret        string
+	playerService *player.Service
 }
 
-func NewHandler(secret string, playerRepository PlayerRepository) *Handler {
+func NewHandler(secret string, playerService *player.Service) *Handler {
 	return &Handler{
-		secret:           secret,
-		playerRepository: playerRepository,
+		secret:        secret,
+		playerService: playerService,
 	}
 }
 
@@ -73,12 +66,11 @@ func (h *Handler) Register(api huma.API) {
 }
 
 func (h *Handler) Login(ctx context.Context, i *RequestLoginPlayer) (*ResponseLoginPlayer, error) {
-	found, err := h.playerRepository.FindOneByUsername(ctx, i.Body.Username)
+	found, err := h.playerService.GetOneByUsername(ctx, i.Body.Username)
 	if err != nil {
-		log.Printf("login player find one: %v", err)
 		return nil, huma.Error401Unauthorized("username or password is incorrect")
 	}
-	if !password.CompareHash(i.Body.Password, found.Password) {
+	if !found.CheckPassword(i.Body.Password) {
 		log.Printf("login compare hash error for user %s", i.Body.Username)
 		return nil, huma.Error401Unauthorized("username or password is incorrect")
 	}
@@ -96,30 +88,16 @@ func (h *Handler) Login(ctx context.Context, i *RequestLoginPlayer) (*ResponseLo
 
 func (h *Handler) RegisterPlayer(
 	ctx context.Context,
-	i *RequestRegisterCreatePlayer,
+	i *player.RequestCreatePlayer,
 ) (*domain.ResponseID[string], error) {
-	nPlayer := player.Player{
+	id, err := h.playerService.Create(ctx, player.PlayerParams{
 		Username: i.Body.Username,
+		Password: i.Body.Password,
 		Img:      i.Body.Img,
 		Email:    i.Body.Email,
-		Password: i.Body.Password,
-	}
-	if err := nPlayer.Valid(); err != nil {
-		log.Printf("register player not valid: %v", err)
-		return nil, huma.Error400BadRequest("entity is not valid", err)
-	}
-
-	hashedPassword, err := password.Hash(nPlayer.Password)
+	})
 	if err != nil {
-		log.Printf("register pass hash: %v", err)
-		return nil, huma.Error500InternalServerError("could not create player")
-	}
-	nPlayer.Password = hashedPassword
-
-	id, err := h.playerRepository.Insert(ctx, &nPlayer)
-	if err != nil {
-		log.Printf("register insert player: %v", err)
-		return nil, huma.Error500InternalServerError("create", err)
+		return nil, huma.Error400BadRequest("register:", err)
 	}
 
 	log.Printf("player %v created", id)
@@ -137,37 +115,22 @@ func (h *Handler) SetPassword(
 		return nil, huma.Error401Unauthorized("player id is invalid")
 	}
 
-	found, err := h.playerRepository.FindOneByUsername(ctx, i.Body.Username)
+	p, err := h.playerService.GetOne(ctx, ctxPlr.ID)
 	if err != nil {
-		log.Printf("find one by username %v: %v", i.Body.Username, err)
-		return nil, huma.Error401Unauthorized("player not found")
+		return nil, huma.Error404NotFound("player not found", err)
 	}
-	if !ctxPlr.IsAdmin && (found.ID != ctxPlr.ID) {
-		log.Printf("player %v access to %v", ctxPlr, found.ID)
+
+	if !ctxPlr.IsAdmin && (p.Username != i.Body.Username) {
+		log.Printf("player %v access to %v", ctxPlr, p.Username)
 		return nil, huma.Error403Forbidden("player cannot access this entity")
 	}
 
-	nPlayer := player.PlayerUpdate{
-		ID:       found.ID,
-		Username: &found.Username,
+	id, err := h.playerService.Update(ctx, p.ID, player.PlayerUpdate{
 		Password: &i.Body.Password,
-	}
-	if err := nPlayer.Valid(); err != nil {
-		log.Printf("set pass not valid: %v", err)
-		return nil, huma.Error400BadRequest("entity is not valid", err)
-	}
-
-	hashedPassword, err := password.Hash(i.Body.Password)
-	if err != nil {
-		log.Printf("set pass hash: %v", err)
-		return nil, huma.Error500InternalServerError("could not update player")
-	}
-	nPlayer.Password = &hashedPassword
-
-	id, err := h.playerRepository.Update(ctx, &nPlayer)
+	})
 	if err != nil {
 		log.Printf("set pass player update: %v", err)
-		return nil, huma.Error500InternalServerError("create", err)
+		return nil, huma.Error500InternalServerError("set password", err)
 	}
 
 	log.Printf("player %v updated (pass)", id)

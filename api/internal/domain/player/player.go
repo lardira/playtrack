@@ -2,15 +2,21 @@ package player
 
 import (
 	"fmt"
+	"net/mail"
+	"net/url"
 	"slices"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/lardira/playtrack/internal/pkg/password"
 	"github.com/lardira/playtrack/internal/pkg/types"
 )
 
 const (
 	MinPasswordLength = 8
 	MinUsernameLength = 4
+
+	MaxTextLength = 256
 )
 
 const (
@@ -33,13 +39,17 @@ var (
 	ErrPasswordMinLen         = fmt.Errorf("password must not be less than %d symbols", MinPasswordLength)
 	ErrCompletedEqLessStarted = fmt.Errorf("completed time must not be before or equal to started")
 	ErrGameRating             = fmt.Errorf("rating must be in range [%v; %v]", minRating, maxRating)
+	ErrTextFieldLen           = fmt.Errorf("max text length is %v", MaxTextLength)
+	ErrPlayerID               = fmt.Errorf("invalid player id")
+	ErrInvalidURL             = fmt.Errorf("invalid url")
+	ErrInvalidEmail           = fmt.Errorf("invalid email address")
 )
 
 var (
-	terminatedStatus = []PlayedGameStatus{
-		PlayedGameStatusCompleted,
-		PlayedGameStatusDropped,
-		PlayedGameStatusRerolled,
+	terminatedStatus = map[PlayedGameStatus]struct{}{
+		PlayedGameStatusCompleted: {},
+		PlayedGameStatusDropped:   {},
+		PlayedGameStatusRerolled:  {},
 	}
 
 	validPlayedGameStatuses = map[PlayedGameStatus][]PlayedGameStatus{
@@ -62,32 +72,93 @@ type Player struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
-func (p *Player) Valid() error {
-	if len(p.Username) < MinUsernameLength {
-		return ErrUsernameMinLen
-	}
-	if len(p.Password) < MinPasswordLength {
-		return ErrPasswordMinLen
-	}
-	return nil
-}
-
-type PlayerUpdate struct {
-	ID          string
-	Username    *string
+type PlayerParams struct {
+	Username    string
+	Password    string
+	IsAdmin     bool
 	Img         *string
 	Email       *string
-	Password    *string
 	Description *string
 }
 
-func (p *PlayerUpdate) Valid() error {
-	if p.Username != nil && len(*p.Username) < MinUsernameLength {
+func NewPlayer(params PlayerParams) (*Player, error) {
+	p := Player{
+		ID:          uuid.NewString(),
+		Username:    params.Username,
+		Password:    params.Password,
+		IsAdmin:     params.IsAdmin,
+		Description: new(string),
+		CreatedAt:   time.Now(),
+	}
+	if err := p.SetUsername(params.Username); err != nil {
+		return nil, err
+	}
+	if err := p.SetPassword(params.Password); err != nil {
+		return nil, err
+	}
+	if params.Img != nil {
+		if err := p.SetImage(*params.Img); err != nil {
+			return nil, err
+		}
+	}
+	if params.Email != nil {
+		if err := p.SetEmail(*params.Email); err != nil {
+			return nil, err
+		}
+	}
+	if params.Description != nil {
+		if err := p.SetDescription(*params.Description); err != nil {
+			return nil, err
+		}
+	}
+
+	return &p, nil
+}
+
+func (p *Player) SetUsername(uname string) error {
+	if len(uname) < MinUsernameLength {
 		return ErrUsernameMinLen
 	}
-	if p.Password != nil && len(*p.Password) < MinPasswordLength {
+	p.Username = uname
+	return nil
+}
+
+func (p *Player) SetImage(u string) error {
+	if _, err := url.ParseRequestURI(u); err != nil {
+		return ErrInvalidURL
+	}
+	p.Img = &u
+	return nil
+}
+
+func (p *Player) SetPassword(pass string) error {
+	if len(p.Password) < MinPasswordLength {
 		return ErrPasswordMinLen
 	}
+	hashedPassword, err := password.Hash(pass)
+	if err != nil {
+		return fmt.Errorf("set passoword: %w", err)
+	}
+	p.Password = hashedPassword
+	return nil
+}
+
+func (p *Player) CheckPassword(pass string) bool {
+	return password.CompareHash(pass, p.Password)
+}
+
+func (p *Player) SetEmail(email string) error {
+	if _, err := mail.ParseAddress(email); err != nil {
+		return ErrInvalidEmail
+	}
+	p.Email = &email
+	return nil
+}
+func (p *Player) SetDescription(description string) error {
+	if len(description) > MaxTextLength {
+		return ErrTextFieldLen
+	}
+	p.Description = &description
 	return nil
 }
 
@@ -104,55 +175,94 @@ type PlayedGame struct {
 	PlayTime    *types.DurationString `json:"play_time"`
 }
 
-func (pg *PlayedGame) Valid() error {
-	if pg.CompletedAt != nil && !pg.StartedAt.Before(*pg.CompletedAt) {
+type PlayedGameParams struct {
+	PlayerID    string
+	GameID      int
+	Points      int
+	Comment     *string
+	Rating      *int
+	Status      PlayedGameStatus
+	StartedAt   time.Time
+	CompletedAt *time.Time
+	PlayTime    *types.DurationString
+}
+
+func NewPlayedGame(params PlayedGameParams) (*PlayedGame, error) {
+	nGame := PlayedGame{
+		PlayerID: params.PlayerID,
+		GameID:   params.GameID,
+		Points:   params.Points,
+		Status:   PlayedGameStatusAdded,
+		PlayTime: params.PlayTime,
+	}
+	if err := uuid.Validate(nGame.PlayerID); err != nil {
+		return nil, ErrPlayerID
+	}
+	if err := nGame.SetDates(params.StartedAt, params.CompletedAt); err != nil {
+		return nil, err
+	}
+	if params.Rating != nil {
+		if err := nGame.SetRating(*params.Rating); err != nil {
+			return nil, err
+		}
+	}
+	if params.Comment != nil {
+		if err := nGame.SetComment(*params.Comment); err != nil {
+			return nil, err
+		}
+	}
+	return &nGame, nil
+}
+
+func (pg *PlayedGame) SetDates(startedAt time.Time, completedAt *time.Time) error {
+	if completedAt != nil && !startedAt.Before(*completedAt) {
 		return ErrCompletedEqLessStarted
 	}
-	if pg.Rating != nil && (*pg.Rating < minRating || *pg.Rating > maxRating) {
+
+	pg.StartedAt = startedAt
+	pg.CompletedAt = completedAt
+	return nil
+}
+
+func (pg *PlayedGame) SetComment(comment string) error {
+	if len(comment) > MaxTextLength {
+		return ErrTextFieldLen
+	}
+	pg.Comment = &comment
+	return nil
+}
+
+func (pg *PlayedGame) SetRating(rating int) error {
+	if rating < minRating || rating > maxRating {
 		return ErrGameRating
 	}
+	pg.Rating = &rating
 	return nil
 }
 
 func (pg *PlayedGame) StatusTerminated() bool {
-	return slices.Contains(terminatedStatus, pg.Status)
+	_, ok := terminatedStatus[pg.Status]
+	return ok
 }
 
-func (pg *PlayedGame) StatusNextValid(next PlayedGameStatus) error {
+func (pg *PlayedGame) Complete() error {
+	now := time.Now()
+	return pg.SetDates(pg.StartedAt, &now)
+}
+
+func (pg *PlayedGame) SetStatus(next PlayedGameStatus) error {
 	nextMp := validPlayedGameStatuses[pg.Status]
 	if ok := slices.Contains(nextMp, next); !ok {
 		return fmt.Errorf("next status is not in possible: %v", nextMp)
 	}
+
+	pg.Status = next
 	return nil
 }
 
-type PlayedGameUpdate struct {
-	ID          int
-	Points      *int
-	Comment     *string
-	Rating      *int
-	Status      *PlayedGameStatus
-	CompletedAt *time.Time
-	StartedAt   *time.Time
-	PlayTime    *types.DurationString
-}
-
-func (p *PlayedGameUpdate) Valid() error {
-	if p.Rating != nil && (*p.Rating < minRating || *p.Rating > maxRating) {
-		return ErrGameRating
+func (pg *PlayedGame) GetPlayTimeDuration() *time.Duration {
+	if pg.PlayTime == nil {
+		return nil
 	}
-	if p.StartedAt != nil && p.CompletedAt != nil {
-		if !p.StartedAt.Before(*p.CompletedAt) {
-			return ErrCompletedEqLessStarted
-		}
-	}
-	return nil
-}
-
-type LeaderboardPlayer struct {
-	PlayerID  string `json:"player_id"`
-	Completed int    `json:"completed"`
-	Total     int    `json:"total"`
-	Dropped   int    `json:"dropped"`
-	Rerolled  int    `json:"rerolled"`
+	return &pg.PlayTime.Duration
 }

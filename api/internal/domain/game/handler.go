@@ -9,19 +9,13 @@ import (
 	"github.com/lardira/playtrack/internal/domain"
 )
 
-type GameRepository interface {
-	FindAll(context.Context) ([]Game, error)
-	FindOne(ctx context.Context, id int) (*Game, error)
-	Insert(context.Context, *Game) (int, error)
-}
-
 type Handler struct {
-	gameRepository GameRepository
+	gameService *Service
 }
 
-func NewHandler(gameRepository GameRepository) *Handler {
+func NewHandler(gameService *Service) *Handler {
 	return &Handler{
-		gameRepository: gameRepository,
+		gameService: gameService,
 	}
 }
 
@@ -57,7 +51,7 @@ func (h *Handler) Register(api huma.API) {
 }
 
 func (h *Handler) GetAll(ctx context.Context, i *struct{}) (*domain.ResponseItems[Game], error) {
-	games, err := h.gameRepository.FindAll(ctx)
+	games, err := h.gameService.GetAll(ctx)
 	if err != nil {
 		log.Printf("game find all: %v", err)
 		return nil, huma.Error500InternalServerError("find all", err)
@@ -71,9 +65,8 @@ func (h *Handler) GetAll(ctx context.Context, i *struct{}) (*domain.ResponseItem
 func (h *Handler) GetOne(ctx context.Context, i *struct {
 	ID int `path:"id"`
 }) (*domain.ResponseItem[Game], error) {
-	game, err := h.gameRepository.FindOne(ctx, i.ID)
+	game, err := h.gameService.GetOne(ctx, i.ID)
 	if err != nil {
-		log.Printf("game find one: %v", err)
 		return nil, huma.Error500InternalServerError("find", err)
 	}
 
@@ -86,21 +79,8 @@ func (h *Handler) Create(
 	ctx context.Context,
 	i *RequestCreateGame,
 ) (*domain.ResponseID[int], error) {
-	nGame := Game{
-		HoursToBeat: i.Body.HoursToBeat,
-		Title:       i.Body.Title,
-		URL:         i.Body.URL,
-	}
-	nGame.CalculatePoints()
-
-	if err := nGame.Valid(); err != nil {
-		log.Printf("game valid: %v", err)
-		return nil, huma.Error400BadRequest("game is not valid", err)
-	}
-
-	id, err := h.gameRepository.Insert(ctx, &nGame)
+	id, err := h.gameService.CreateGame(ctx, i)
 	if err != nil {
-		log.Printf("game insert: %v", err)
 		return nil, huma.Error500InternalServerError("create", err)
 	}
 
