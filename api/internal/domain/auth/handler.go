@@ -20,12 +20,6 @@ const (
 	defaultExpiration = 10 * 24 * time.Hour
 )
 
-type PlayerRepository interface {
-	FindOneByUsername(ctx context.Context, username string) (*player.Player, error)
-	Update(ctx context.Context, player *player.PlayerUpdate) (string, error)
-	Insert(context.Context, *player.Player) (string, error)
-}
-
 type Handler struct {
 	secret        string
 	playerService *player.Service

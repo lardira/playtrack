@@ -29,12 +29,6 @@ packages:
     interfaces:
       GameRepository: 
         config: {}
-  github.com/lardira/playtrack/internal/domain/auth:
-    config:
-      all: false
-    interfaces:
-      PlayerRepository: 
-        config: {}
   github.com/lardira/playtrack/internal/tech:
     config:
       all: false
