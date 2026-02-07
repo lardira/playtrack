@@ -87,7 +87,7 @@ func (s *Service) Create(ctx context.Context, params PlayerParams) (string, erro
 
 	id, err := s.playerRepository.Insert(ctx, nPlayer)
 	if err != nil {
-		log.Printf("register insert player: %v", err)
+		log.Printf("insert player: %v", err)
 		return "nil", err
 	}
 
@@ -102,12 +102,13 @@ func (s *Service) Update(ctx context.Context, playerID string, upd PlayerUpdate)
 	}
 
 	if err := s.setUpdate(player, &upd); err != nil {
+		log.Printf("set update params: %v", err)
 		return "", err
 	}
 
 	id, err := s.playerRepository.Update(ctx, player)
 	if err != nil {
-		log.Printf("played game insert: %v", err)
+		log.Printf("player update: %v", err)
 		return "", err
 	}
 	return id, nil
@@ -136,6 +137,7 @@ func (s *Service) GetOnePlayedGame(ctx context.Context, playedGameID int) (*Play
 func (s *Service) CreatePlayedGame(ctx context.Context, playerID string, gameID int) (int, error) {
 	game, err := s.gameService.GetOne(ctx, gameID)
 	if err != nil {
+		log.Printf("create played game: %v", err)
 		return 0, err
 	}
 
@@ -157,6 +159,7 @@ func (s *Service) CreatePlayedGame(ctx context.Context, playerID string, gameID 
 		StartedAt: time.Now(),
 	})
 	if err != nil {
+		log.Printf("create played game: %v", err)
 		return 0, err
 	}
 
@@ -172,20 +175,22 @@ func (s *Service) CreatePlayedGame(ctx context.Context, playerID string, gameID 
 func (s *Service) UpdatePlayedGame(ctx context.Context, playerID string, playedGameID int, upd PlayedGameUpdate) (int, error) {
 	playedGame, err := s.GetOnePlayedGame(ctx, playedGameID)
 	if err != nil {
-		log.Printf("played find one: %v", err)
+		log.Printf("update played game: %v", err)
 		return 0, err
 	}
 
 	if err := s.setPlayedUpdate(playedGame, &upd); err != nil {
+		log.Printf("update played game: %v", err)
 		return 0, err
 	}
 	if err := s.applyPlayedStatus(ctx, playerID, playedGame); err != nil {
+		log.Printf("update played game: %v", err)
 		return 0, err
 	}
 
 	id, err := s.playedGameRepository.Update(ctx, playedGame)
 	if err != nil {
-		log.Printf("played game insert: %v", err)
+		log.Printf("update played game: %v", err)
 		return 0, err
 	}
 	return id, nil
