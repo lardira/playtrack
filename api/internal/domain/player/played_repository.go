@@ -59,11 +59,11 @@ func (r *PGPlayedRepository) FindAll(ctx context.Context, playerID string) ([]Pl
 	return out, nil
 }
 
-func (r *PGPlayedRepository) FindOne(ctx context.Context, playerID string, id int) (*PlayedGame, error) {
+func (r *PGPlayedRepository) FindOne(ctx context.Context, id int) (*PlayedGame, error) {
 	sqlBuild := sq.Select(playedGameColumns).
 		PlaceholderFormat(sq.Dollar).
 		From(TablePlayedGame).
-		Where(sq.Eq{"player_id": playerID, "id": id})
+		Where(sq.Eq{"id": id})
 
 	query, args, err := sqlBuild.ToSql()
 	if err != nil {
@@ -81,8 +81,8 @@ func (r *PGPlayedRepository) FindLastNotReroll(ctx context.Context, playerID str
 	sqlBuild := sq.Select(playedGameColumns).
 		PlaceholderFormat(sq.Dollar).
 		From(TablePlayedGame).
-		Where(sq.Eq{"player_id": playerID}, sq.NotEq{"status": PlayedGameStatusRerolled}).
-		OrderBy("started_at::date DESC", "completed_at::date DESC", "id DESC").
+		Where(sq.And{sq.Eq{"player_id": playerID}, sq.NotEq{"status": PlayedGameStatusRerolled}}).
+		OrderBy("completed_at::date DESC", "id DESC").
 		Limit(1).
 		Offset(1)
 
@@ -107,7 +107,7 @@ func (r *PGPlayedRepository) Insert(ctx context.Context, game *PlayedGame) (int,
 	sqlBuild := sq.Insert(TablePlayedGame).
 		PlaceholderFormat(sq.Dollar).
 		Columns("player_id", "game_id", "status", "points").
-		Values(game.PlayerID, game.GameID, PlayedGameStatusAdded, game.Points).
+		Values(game.PlayerID, game.GameID, game.Status, game.Points).
 		Suffix("RETURNING id")
 
 	query, args, err := sqlBuild.ToSql()
@@ -122,31 +122,24 @@ func (r *PGPlayedRepository) Insert(ctx context.Context, game *PlayedGame) (int,
 	return id, nil
 }
 
-func (r *PGPlayedRepository) Update(ctx context.Context, game *PlayedGameUpdate) (int, error) {
+func (r *PGPlayedRepository) Update(ctx context.Context, game *PlayedGame) (int, error) {
 	var id int
 
-	updBuild := sq.Update(TablePlayedGame).PlaceholderFormat(sq.Dollar)
+	updBuild := sq.Update(TablePlayedGame).
+		PlaceholderFormat(sq.Dollar).
+		SetMap(map[string]interface{}{
+			"points":       game.Points,
+			"comment":      game.Comment,
+			"rating":       game.Rating,
+			"status":       game.Status,
+			"started_at":   game.StartedAt,
+			"completed_at": game.CompletedAt,
+			"play_time":    game.GetPlayTimeDuration(),
+		}).
+		Where(sq.Eq{"id": game.ID}).
+		Suffix("RETURNING id")
 
-	if game.Points != nil {
-		updBuild = updBuild.Set("points", *game.Points)
-	}
-	if game.Comment != nil {
-		updBuild = updBuild.Set("comment", *game.Comment)
-	}
-	if game.Rating != nil {
-		updBuild = updBuild.Set("rating", *game.Rating)
-	}
-	if game.Status != nil {
-		updBuild = updBuild.Set("status", *game.Status)
-	}
-	if game.CompletedAt != nil {
-		updBuild = updBuild.Set("completed_at", *game.CompletedAt)
-	}
-	if game.PlayTime != nil {
-		updBuild = updBuild.Set("play_time", game.PlayTime.Duration)
-	}
-
-	query, args, err := updBuild.Where(sq.Eq{"id": game.ID}).Suffix("RETURNING id").ToSql()
+	query, args, err := updBuild.ToSql()
 	if err != nil {
 		return id, err
 	}

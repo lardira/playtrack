@@ -6,12 +6,13 @@ import (
 
 	"github.com/alecthomas/assert/v2"
 	"github.com/lardira/playtrack/internal/pkg/testutil"
-	"github.com/stretchr/testify/mock"
+	mock "github.com/stretchr/testify/mock"
 )
 
 func TestGetAll(t *testing.T) {
 	gameRepository := NewMockGameRepository(t)
-	handler := NewHandler(gameRepository)
+	gameService := NewService(gameRepository)
+	handler := NewHandler(gameService)
 
 	games := make([]Game, 2)
 	testutil.Faker().Struct(&games[0])
@@ -29,7 +30,8 @@ func TestGetAll(t *testing.T) {
 
 func TestGetOne(t *testing.T) {
 	gameRepository := NewMockGameRepository(t)
-	handler := NewHandler(gameRepository)
+	gameService := NewService(gameRepository)
+	handler := NewHandler(gameService)
 
 	var game Game
 	testutil.Faker().Struct(&game)
@@ -53,7 +55,8 @@ func TestGetOne(t *testing.T) {
 
 func TestGetOne_NotFound(t *testing.T) {
 	gameRepository := NewMockGameRepository(t)
-	handler := NewHandler(gameRepository)
+	gameService := NewService(gameRepository)
+	handler := NewHandler(gameService)
 
 	var game Game
 	testutil.Faker().Struct(&game)
@@ -76,7 +79,8 @@ func TestGetOne_NotFound(t *testing.T) {
 
 func TestGetCreate(t *testing.T) {
 	gameRepository := NewMockGameRepository(t)
-	handler := NewHandler(gameRepository)
+	gameService := NewService(gameRepository)
+	handler := NewHandler(gameService)
 
 	newID := testutil.Faker().Int()
 	hoursToBeat := 2
