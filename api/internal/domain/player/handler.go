@@ -183,7 +183,7 @@ func (h *Handler) UpdatePlayedGame(
 		return nil, huma.Error403Forbidden("player cannot access this entity")
 	}
 
-	id, err := h.playerService.UpdatePlayedGame(ctx, i.PlayerID, i.GameID, &i.Body)
+	id, err := h.playerService.UpdatePlayedGame(ctx, i.PlayerID, i.GameID, i.Body)
 	if err != nil {
 		return nil, huma.Error400BadRequest("entity is not found", err)
 	}

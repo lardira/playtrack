@@ -21,7 +21,7 @@ packages:
         config: {}
       PlayedGameRepository: 
         config: {}
-      GameRepository: 
+      GameService: 
         config: {}
   github.com/lardira/playtrack/internal/domain/game:
     config:

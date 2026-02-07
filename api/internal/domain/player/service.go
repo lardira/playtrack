@@ -26,20 +26,20 @@ type PlayedGameRepository interface {
 	Update(ctx context.Context, game *PlayedGame) (int, error)
 }
 
-type GameRepository interface {
-	FindOne(ctx context.Context, id int) (*game.Game, error)
+type GameService interface {
+	GetOne(ctx context.Context, gameID int) (*game.Game, error)
 }
 
 type Service struct {
 	playerRepository     PlayerRepository
 	playedGameRepository PlayedGameRepository
-	gameService          *game.Service
+	gameService          GameService
 }
 
 func NewService(
 	playerRepository PlayerRepository,
 	playedGameRepository PlayedGameRepository,
-	gameService *game.Service,
+	gameService GameService,
 ) *Service {
 	return &Service{
 		playerRepository:     playerRepository,
@@ -169,14 +169,14 @@ func (s *Service) CreatePlayedGame(ctx context.Context, playerID string, gameID 
 	return id, nil
 }
 
-func (s *Service) UpdatePlayedGame(ctx context.Context, playerID string, playedGameID int, upd *PlayedGameUpdate) (int, error) {
+func (s *Service) UpdatePlayedGame(ctx context.Context, playerID string, playedGameID int, upd PlayedGameUpdate) (int, error) {
 	playedGame, err := s.GetOnePlayedGame(ctx, playedGameID)
 	if err != nil {
 		log.Printf("played find one: %v", err)
 		return 0, err
 	}
 
-	if err := s.setPlayedUpdate(playedGame, upd); err != nil {
+	if err := s.setPlayedUpdate(playedGame, &upd); err != nil {
 		return 0, err
 	}
 	if err := s.applyPlayedStatus(ctx, playerID, playedGame); err != nil {
