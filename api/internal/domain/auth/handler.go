@@ -98,13 +98,13 @@ func (h *Handler) RegisterPlayer(
 	ctx context.Context,
 	i *RequestRegisterCreatePlayer,
 ) (*domain.ResponseID[string], error) {
-	nPlayer := player.Player{
+	nPlayer, err := player.NewPlayer(player.PlayerParams{
 		Username: i.Body.Username,
+		Password: i.Body.Password,
 		Img:      i.Body.Img,
 		Email:    i.Body.Email,
-		Password: i.Body.Password,
-	}
-	if err := nPlayer.Valid(); err != nil {
+	})
+	if err != nil {
 		log.Printf("register player not valid: %v", err)
 		return nil, huma.Error400BadRequest("entity is not valid", err)
 	}
@@ -116,7 +116,7 @@ func (h *Handler) RegisterPlayer(
 	}
 	nPlayer.Password = hashedPassword
 
-	id, err := h.playerRepository.Insert(ctx, &nPlayer)
+	id, err := h.playerRepository.Insert(ctx, nPlayer)
 	if err != nil {
 		log.Printf("register insert player: %v", err)
 		return nil, huma.Error500InternalServerError("create", err)

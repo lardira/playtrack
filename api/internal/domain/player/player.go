@@ -2,6 +2,8 @@ package player
 
 import (
 	"fmt"
+	"net/mail"
+	"net/url"
 	"slices"
 	"time"
 
@@ -13,7 +15,7 @@ const (
 	MinPasswordLength = 8
 	MinUsernameLength = 4
 
-	MaxCommentLength = 256
+	MaxTextLength = 256
 )
 
 const (
@@ -36,8 +38,10 @@ var (
 	ErrPasswordMinLen         = fmt.Errorf("password must not be less than %d symbols", MinPasswordLength)
 	ErrCompletedEqLessStarted = fmt.Errorf("completed time must not be before or equal to started")
 	ErrGameRating             = fmt.Errorf("rating must be in range [%v; %v]", minRating, maxRating)
-	ErrCommentLen             = fmt.Errorf("max comment length is %v", MaxCommentLength)
+	ErrTextFieldLen           = fmt.Errorf("max text length is %v", MaxTextLength)
 	ErrPlayerID               = fmt.Errorf("invalid player id")
+	ErrInvalidURL             = fmt.Errorf("invalid url")
+	ErrInvalidEmail           = fmt.Errorf("invalid email address")
 )
 
 var (
@@ -67,13 +71,69 @@ type Player struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
-func (p *Player) Valid() error {
+type PlayerParams struct {
+	Username    string
+	Password    string
+	IsAdmin     bool
+	Img         *string
+	Email       *string
+	Description *string
+}
+
+func NewPlayer(params PlayerParams) (*Player, error) {
+	p := Player{
+		ID:          uuid.NewString(),
+		Username:    params.Username,
+		Password:    params.Password,
+		IsAdmin:     params.IsAdmin,
+		Description: new(string),
+		CreatedAt:   time.Now(),
+	}
 	if len(p.Username) < MinUsernameLength {
-		return ErrUsernameMinLen
+		return nil, ErrUsernameMinLen
 	}
 	if len(p.Password) < MinPasswordLength {
-		return ErrPasswordMinLen
+		return nil, ErrPasswordMinLen
 	}
+	if params.Img != nil {
+		if err := p.SetImage(*params.Img); err != nil {
+			return nil, err
+		}
+	}
+	if params.Email != nil {
+		if err := p.SetEmail(*params.Email); err != nil {
+			return nil, err
+		}
+	}
+	if params.Description != nil {
+		if err := p.SetDescription(*params.Description); err != nil {
+			return nil, err
+		}
+	}
+
+	return &p, nil
+}
+
+func (p *Player) SetImage(u string) error {
+	if _, err := url.ParseRequestURI(u); err != nil {
+		return ErrInvalidURL
+	}
+	p.Img = &u
+	return nil
+}
+
+func (p *Player) SetEmail(email string) error {
+	if _, err := mail.ParseAddress(email); err != nil {
+		return ErrInvalidEmail
+	}
+	p.Email = &email
+	return nil
+}
+func (p *Player) SetDescription(description string) error {
+	if len(description) > MaxTextLength {
+		return ErrTextFieldLen
+	}
+	p.Description = &description
 	return nil
 }
 
@@ -159,9 +219,10 @@ func (pg *PlayedGame) SetDates(startedAt time.Time, completedAt *time.Time) erro
 }
 
 func (pg *PlayedGame) SetComment(comment string) error {
-	if len(comment) > MaxCommentLength {
-		return ErrCommentLen
+	if len(comment) > MaxTextLength {
+		return ErrTextFieldLen
 	}
+	pg.Comment = &comment
 	return nil
 }
 

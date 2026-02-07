@@ -22,7 +22,9 @@ func NewHandler(
 	playedGameRepository PlayedGameRepository,
 ) *Handler {
 	return &Handler{
-		playerService: playerService,
+		playerService:        playerService,
+		playerRepository:     playerRepository,
+		playedGameRepository: playedGameRepository,
 	}
 }
 
