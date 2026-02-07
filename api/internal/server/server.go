@@ -78,8 +78,8 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 
 	techHandler := tech.NewHandler(healthChecker)
 	gameHandler := game.NewHandler(gameService)
-	playerHandler := player.NewHandler(playerService, playerRepository, playedGameRepository)
-	authHandler := auth.NewHandler(opts.JWTSecret, playerRepository)
+	playerHandler := player.NewHandler(playerService)
+	authHandler := auth.NewHandler(opts.JWTSecret, playerService)
 
 	techHandler.Register(apiV1)
 	gameHandler.Register(apiV1)

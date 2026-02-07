@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lardira/playtrack/internal/pkg/password"
 	"github.com/lardira/playtrack/internal/pkg/types"
 )
 
@@ -89,11 +90,11 @@ func NewPlayer(params PlayerParams) (*Player, error) {
 		Description: new(string),
 		CreatedAt:   time.Now(),
 	}
-	if len(p.Username) < MinUsernameLength {
-		return nil, ErrUsernameMinLen
+	if err := p.SetUsername(params.Username); err != nil {
+		return nil, err
 	}
-	if len(p.Password) < MinPasswordLength {
-		return nil, ErrPasswordMinLen
+	if err := p.SetPassword(params.Password); err != nil {
+		return nil, err
 	}
 	if params.Img != nil {
 		if err := p.SetImage(*params.Img); err != nil {
@@ -114,12 +115,36 @@ func NewPlayer(params PlayerParams) (*Player, error) {
 	return &p, nil
 }
 
+func (p *Player) SetUsername(uname string) error {
+	if len(uname) < MinUsernameLength {
+		return ErrUsernameMinLen
+	}
+	p.Username = uname
+	return nil
+}
+
 func (p *Player) SetImage(u string) error {
 	if _, err := url.ParseRequestURI(u); err != nil {
 		return ErrInvalidURL
 	}
 	p.Img = &u
 	return nil
+}
+
+func (p *Player) SetPassword(pass string) error {
+	if len(p.Password) < MinPasswordLength {
+		return ErrPasswordMinLen
+	}
+	hashedPassword, err := password.Hash(pass)
+	if err != nil {
+		return fmt.Errorf("set passoword: %w", err)
+	}
+	p.Password = hashedPassword
+	return nil
+}
+
+func (p *Player) CheckPassword(pass string) bool {
+	return password.CompareHash(pass, p.Password)
 }
 
 func (p *Player) SetEmail(email string) error {
@@ -134,25 +159,6 @@ func (p *Player) SetDescription(description string) error {
 		return ErrTextFieldLen
 	}
 	p.Description = &description
-	return nil
-}
-
-type PlayerUpdate struct {
-	ID          string
-	Username    *string
-	Img         *string
-	Email       *string
-	Password    *string
-	Description *string
-}
-
-func (p *PlayerUpdate) Valid() error {
-	if p.Username != nil && len(*p.Username) < MinUsernameLength {
-		return ErrUsernameMinLen
-	}
-	if p.Password != nil && len(*p.Password) < MinPasswordLength {
-		return ErrPasswordMinLen
-	}
 	return nil
 }
 
@@ -252,4 +258,11 @@ func (pg *PlayedGame) SetStatus(next PlayedGameStatus) error {
 
 	pg.Status = next
 	return nil
+}
+
+func (pg *PlayedGame) GetPlayTimeDuration() *time.Duration {
+	if pg.PlayTime == nil {
+		return nil
+	}
+	return &pg.PlayTime.Duration
 }

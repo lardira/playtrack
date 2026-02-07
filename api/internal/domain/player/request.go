@@ -6,14 +6,26 @@ import (
 	"github.com/lardira/playtrack/internal/pkg/types"
 )
 
+type RequestCreatePlayer struct {
+	Body struct {
+		Username string  `json:"username" minLength:"4" maxLength:"32"`
+		Password string  `json:"password" minLength:"8" maxLength:"32"`
+		Img      *string `json:"img" format:"uri" required:"false"`
+		Email    *string `json:"email" format:"email" required:"false"`
+	}
+}
+
+type PlayerUpdate struct {
+	Username    *string `json:"username" minLength:"4" maxLength:"32" required:"false"`
+	Img         *string `json:"img" format:"uri" required:"false"`
+	Email       *string `json:"email" format:"email" required:"false"`
+	Password    *string `json:"password" minLength:"8" maxLength:"32" required:"false"`
+	Description *string `json:"description" required:"false"`
+}
+
 type RequestUpdatePlayer struct {
 	PlayerID string `path:"id" format:"uuid"`
-	Body     struct {
-		Username    *string `json:"username" minLength:"4" maxLength:"32" required:"false"`
-		Img         *string `json:"img" format:"uri" required:"false"`
-		Email       *string `json:"email" format:"email" required:"false"`
-		Description *string `json:"description" required:"false"`
-	}
+	Body     PlayerUpdate
 }
 
 type RequestCreatePlayedGame struct {

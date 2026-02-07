@@ -127,13 +127,15 @@ func (r *PGPlayedRepository) Update(ctx context.Context, game *PlayedGame) (int,
 
 	updBuild := sq.Update(TablePlayedGame).
 		PlaceholderFormat(sq.Dollar).
-		Set("points", game.Points).
-		Set("comment", game.Comment).
-		Set("rating", game.Rating).
-		Set("status", game.Status).
-		Set("started_at", game.StartedAt).
-		Set("completed_at", game.CompletedAt).
-		Set("play_time", game.PlayTime.Duration).
+		SetMap(map[string]interface{}{
+			"points":       game.Points,
+			"comment":      game.Comment,
+			"rating":       game.Rating,
+			"status":       game.Status,
+			"started_at":   game.StartedAt,
+			"completed_at": game.CompletedAt,
+			"play_time":    game.GetPlayTimeDuration(),
+		}).
 		Where(sq.Eq{"id": game.ID}).
 		Suffix("RETURNING id")
 

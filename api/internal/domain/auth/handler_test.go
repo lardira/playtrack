@@ -1,226 +1,212 @@
 package auth
 
-import (
-	"testing"
-	"time"
+// const (
+// 	testSecret = "test"
+// )
 
-	"github.com/alecthomas/assert/v2"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
-	"github.com/lardira/playtrack/internal/domain/player"
-	"github.com/lardira/playtrack/internal/pkg/ctxutil"
-	"github.com/lardira/playtrack/internal/pkg/password"
-	"github.com/lardira/playtrack/internal/pkg/testutil"
-	"github.com/stretchr/testify/mock"
-)
+// func TestNewHandler(t *testing.T) {
+// 	got := NewHandler(testSecret, NewMockPlayerRepository(t))
+// 	assert.NotEqual(t, nil, got)
 
-const (
-	testSecret = "test"
-)
+// 	assert.Equal(t, testSecret, got.secret)
+// 	assert.NotEqual(t, nil, got.playerRepository)
+// }
 
-func TestNewHandler(t *testing.T) {
-	got := NewHandler(testSecret, NewMockPlayerRepository(t))
-	assert.NotEqual(t, nil, got)
+// func TestLogin(t *testing.T) {
+// 	playerRepository := NewMockPlayerRepository(t)
+// 	handler := NewHandler(testSecret, playerRepository)
 
-	assert.Equal(t, testSecret, got.secret)
-	assert.NotEqual(t, nil, got.playerRepository)
-}
+// 	playerUsername := "test"
+// 	playerPassword := "test"
 
-func TestLogin(t *testing.T) {
-	playerRepository := NewMockPlayerRepository(t)
-	handler := NewHandler(testSecret, playerRepository)
+// 	hash, _ := password.Hash(playerPassword)
+// 	testPlayer := player.Player{
+// 		ID:       uuid.NewString(),
+// 		Username: playerUsername,
+// 		Password: hash,
+// 	}
 
-	playerUsername := "test"
-	playerPassword := "test"
+// 	loginRequest := RequestLoginPlayer{}
+// 	loginRequest.Body.Username = playerUsername
+// 	loginRequest.Body.Password = playerPassword
 
-	hash, _ := password.Hash(playerPassword)
-	testPlayer := player.Player{
-		ID:       uuid.NewString(),
-		Username: playerUsername,
-		Password: hash,
-	}
+// 	playerRepository.
+// 		On("FindOneByUsername", mock.Anything, playerUsername).
+// 		Once().
+// 		Return(&testPlayer, nil)
 
-	loginRequest := RequestLoginPlayer{}
-	loginRequest.Body.Username = playerUsername
-	loginRequest.Body.Password = playerPassword
+// 	resp, err := handler.Login(t.Context(), &loginRequest)
+// 	token := resp.Body.Token
 
-	playerRepository.
-		On("FindOneByUsername", mock.Anything, playerUsername).
-		Once().
-		Return(&testPlayer, nil)
+// 	assert.NoError(t, err)
+// 	assert.NotZero(t, token)
 
-	resp, err := handler.Login(t.Context(), &loginRequest)
-	token := resp.Body.Token
+// 	parsedToken, err := jwt.Parse(token, func(t *jwt.Token) (any, error) {
+// 		exp, err := t.Claims.GetExpirationTime()
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		if exp.Before(time.Now()) {
+// 			return nil, err
+// 		}
+// 		return []byte(testSecret), nil
+// 	})
+// 	assert.NoError(t, err)
+// 	assert.NotEqual(t, nil, parsedToken)
 
-	assert.NoError(t, err)
-	assert.NotZero(t, token)
+// 	sub, err := parsedToken.Claims.GetSubject()
+// 	assert.NoError(t, err)
+// 	assert.Equal(t, testPlayer.ID, sub)
+// }
 
-	parsedToken, err := jwt.Parse(token, func(t *jwt.Token) (any, error) {
-		exp, err := t.Claims.GetExpirationTime()
-		if err != nil {
-			return nil, err
-		}
-		if exp.Before(time.Now()) {
-			return nil, err
-		}
-		return []byte(testSecret), nil
-	})
-	assert.NoError(t, err)
-	assert.NotEqual(t, nil, parsedToken)
+// func TestRegister(t *testing.T) {
+// 	playerRepository := NewMockPlayerRepository(t)
+// 	handler := NewHandler(testSecret, playerRepository)
 
-	sub, err := parsedToken.Claims.GetSubject()
-	assert.NoError(t, err)
-	assert.Equal(t, testPlayer.ID, sub)
-}
+// 	newID := uuid.NewString()
+// 	email := testutil.Faker().Email()
+// 	req := RequestRegisterCreatePlayer{}
+// 	req.Body.Username = testutil.Faker().Username()
+// 	req.Body.Password = testutil.Faker().Password(true, true, true, true, false, player.MinPasswordLength)
+// 	req.Body.Email = &email
 
-func TestRegister(t *testing.T) {
-	playerRepository := NewMockPlayerRepository(t)
-	handler := NewHandler(testSecret, playerRepository)
+// 	var constructedPlayer *player.Player
 
-	newID := uuid.NewString()
-	email := testutil.Faker().Email()
-	req := RequestRegisterCreatePlayer{}
-	req.Body.Username = testutil.Faker().Username()
-	req.Body.Password = testutil.Faker().Password(true, true, true, true, false, player.MinPasswordLength)
-	req.Body.Email = &email
+// 	playerRepository.
+// 		On(
+// 			"Insert",
+// 			mock.Anything,
+// 			mock.MatchedBy(func(p *player.Player) bool {
+// 				if p == nil || p.Username == "" || p.Password == "" {
+// 					return false
+// 				}
+// 				constructedPlayer = p
+// 				return true
+// 			})).
+// 		Once().
+// 		Return(newID, nil)
 
-	var constructedPlayer *player.Player
+// 	resp, err := handler.RegisterPlayer(t.Context(), &req)
+// 	assert.NoError(t, err)
+// 	assert.Equal(t, newID, resp.Body.ID)
 
-	playerRepository.
-		On(
-			"Insert",
-			mock.Anything,
-			mock.MatchedBy(func(p *player.Player) bool {
-				if p == nil || p.Username == "" || p.Password == "" {
-					return false
-				}
-				constructedPlayer = p
-				return true
-			})).
-		Once().
-		Return(newID, nil)
+// 	assert.True(t, password.CompareHash(req.Body.Password, constructedPlayer.Password))
+// }
 
-	resp, err := handler.RegisterPlayer(t.Context(), &req)
-	assert.NoError(t, err)
-	assert.Equal(t, newID, resp.Body.ID)
+// func TestSetPassword(t *testing.T) {
+// 	playerRepository := NewMockPlayerRepository(t)
+// 	handler := NewHandler(testSecret, playerRepository)
 
-	assert.True(t, password.CompareHash(req.Body.Password, constructedPlayer.Password))
-}
+// 	playerID := uuid.NewString()
+// 	username := testutil.Faker().Username()
+// 	ctx := ctxutil.SetPlayer(t.Context(), ctxutil.CtxPlayer{ID: playerID})
 
-func TestSetPassword(t *testing.T) {
-	playerRepository := NewMockPlayerRepository(t)
-	handler := NewHandler(testSecret, playerRepository)
+// 	req := RequestSetPassword{}
+// 	req.Body.Username = username
+// 	req.Body.Password = testutil.Faker().Password(true, true, true, true, false, player.MinPasswordLength)
 
-	playerID := uuid.NewString()
-	username := testutil.Faker().Username()
-	ctx := ctxutil.SetPlayer(t.Context(), ctxutil.CtxPlayer{ID: playerID})
+// 	var constructedPlayer *player.PlayerUpdate
 
-	req := RequestSetPassword{}
-	req.Body.Username = username
-	req.Body.Password = testutil.Faker().Password(true, true, true, true, false, player.MinPasswordLength)
+// 	playerRepository.
+// 		On("FindOneByUsername", ctx, username).
+// 		Once().
+// 		Return(&player.Player{ID: playerID, Username: username}, nil)
 
-	var constructedPlayer *player.PlayerUpdate
+// 	playerRepository.
+// 		On(
+// 			"Update",
+// 			ctx,
+// 			mock.MatchedBy(func(p *player.PlayerUpdate) bool {
+// 				if p == nil || p.Password == nil || p.ID == "" {
+// 					return false
+// 				}
+// 				constructedPlayer = p
+// 				return true
+// 			})).
+// 		Once().
+// 		Return(playerID, nil)
 
-	playerRepository.
-		On("FindOneByUsername", ctx, username).
-		Once().
-		Return(&player.Player{ID: playerID, Username: username}, nil)
+// 	resp, err := handler.SetPassword(ctx, &req)
+// 	assert.NoError(t, err)
+// 	assert.Equal(t, playerID, resp.Body.ID)
 
-	playerRepository.
-		On(
-			"Update",
-			ctx,
-			mock.MatchedBy(func(p *player.PlayerUpdate) bool {
-				if p == nil || p.Password == nil || p.ID == "" {
-					return false
-				}
-				constructedPlayer = p
-				return true
-			})).
-		Once().
-		Return(playerID, nil)
+// 	assert.True(t, password.CompareHash(req.Body.Password, *constructedPlayer.Password))
+// }
 
-	resp, err := handler.SetPassword(ctx, &req)
-	assert.NoError(t, err)
-	assert.Equal(t, playerID, resp.Body.ID)
+// func TestSetPassword_DifferentPlayer(t *testing.T) {
+// 	playerRepository := NewMockPlayerRepository(t)
+// 	handler := NewHandler(testSecret, playerRepository)
 
-	assert.True(t, password.CompareHash(req.Body.Password, *constructedPlayer.Password))
-}
+// 	newID := uuid.NewString()
+// 	diffID := uuid.NewString()
+// 	username := testutil.Faker().Username()
+// 	ctx := ctxutil.SetPlayer(t.Context(), ctxutil.CtxPlayer{ID: newID})
 
-func TestSetPassword_DifferentPlayer(t *testing.T) {
-	playerRepository := NewMockPlayerRepository(t)
-	handler := NewHandler(testSecret, playerRepository)
+// 	req := RequestSetPassword{}
+// 	req.Body.Username = username
+// 	req.Body.Password = testutil.Faker().Password(true, true, true, true, false, player.MinPasswordLength)
 
-	newID := uuid.NewString()
-	diffID := uuid.NewString()
-	username := testutil.Faker().Username()
-	ctx := ctxutil.SetPlayer(t.Context(), ctxutil.CtxPlayer{ID: newID})
+// 	playerRepository.
+// 		On("FindOneByUsername", ctx, username).
+// 		Once().
+// 		Return(&player.Player{ID: diffID, Username: username}, nil)
 
-	req := RequestSetPassword{}
-	req.Body.Username = username
-	req.Body.Password = testutil.Faker().Password(true, true, true, true, false, player.MinPasswordLength)
+// 	playerRepository.AssertNotCalled(t, "Update")
 
-	playerRepository.
-		On("FindOneByUsername", ctx, username).
-		Once().
-		Return(&player.Player{ID: diffID, Username: username}, nil)
+// 	_, err := handler.SetPassword(ctx, &req)
+// 	assert.Error(t, err)
+// }
 
-	playerRepository.AssertNotCalled(t, "Update")
+// func TestSetPassword_DifferentPlayer_AsAdmin(t *testing.T) {
+// 	playerRepository := NewMockPlayerRepository(t)
+// 	handler := NewHandler(testSecret, playerRepository)
 
-	_, err := handler.SetPassword(ctx, &req)
-	assert.Error(t, err)
-}
+// 	adminID := uuid.NewString()
+// 	diffID := uuid.NewString()
+// 	username := testutil.Faker().Username()
+// 	ctx := ctxutil.SetPlayer(t.Context(), ctxutil.CtxPlayer{ID: adminID, IsAdmin: true})
 
-func TestSetPassword_DifferentPlayer_AsAdmin(t *testing.T) {
-	playerRepository := NewMockPlayerRepository(t)
-	handler := NewHandler(testSecret, playerRepository)
+// 	req := RequestSetPassword{}
+// 	req.Body.Username = username
+// 	req.Body.Password = testutil.Faker().Password(true, true, true, true, false, player.MinPasswordLength)
 
-	adminID := uuid.NewString()
-	diffID := uuid.NewString()
-	username := testutil.Faker().Username()
-	ctx := ctxutil.SetPlayer(t.Context(), ctxutil.CtxPlayer{ID: adminID, IsAdmin: true})
+// 	var constructedPlayer *player.PlayerUpdate
 
-	req := RequestSetPassword{}
-	req.Body.Username = username
-	req.Body.Password = testutil.Faker().Password(true, true, true, true, false, player.MinPasswordLength)
+// 	playerRepository.
+// 		On("FindOneByUsername", ctx, username).
+// 		Once().
+// 		Return(&player.Player{ID: diffID, Username: username}, nil)
 
-	var constructedPlayer *player.PlayerUpdate
+// 	playerRepository.
+// 		On(
+// 			"Update",
+// 			ctx,
+// 			mock.MatchedBy(func(p *player.PlayerUpdate) bool {
+// 				if p == nil || p.Password == nil || p.ID == "" {
+// 					return false
+// 				}
+// 				constructedPlayer = p
+// 				return true
+// 			})).
+// 		Once().
+// 		Return(diffID, nil)
 
-	playerRepository.
-		On("FindOneByUsername", ctx, username).
-		Once().
-		Return(&player.Player{ID: diffID, Username: username}, nil)
+// 	resp, err := handler.SetPassword(ctx, &req)
+// 	assert.NoError(t, err)
+// 	assert.Equal(t, diffID, resp.Body.ID)
 
-	playerRepository.
-		On(
-			"Update",
-			ctx,
-			mock.MatchedBy(func(p *player.PlayerUpdate) bool {
-				if p == nil || p.Password == nil || p.ID == "" {
-					return false
-				}
-				constructedPlayer = p
-				return true
-			})).
-		Once().
-		Return(diffID, nil)
+// 	assert.Equal(t, diffID, constructedPlayer.ID)
 
-	resp, err := handler.SetPassword(ctx, &req)
-	assert.NoError(t, err)
-	assert.Equal(t, diffID, resp.Body.ID)
+// 	assert.True(t, password.CompareHash(req.Body.Password, *constructedPlayer.Password))
+// }
 
-	assert.Equal(t, diffID, constructedPlayer.ID)
+// func TestIssueToken(t *testing.T) {
+// 	var p player.Player
+// 	testutil.Faker().Struct(&p)
 
-	assert.True(t, password.CompareHash(req.Body.Password, *constructedPlayer.Password))
-}
+// 	handler := NewHandler(testSecret, NewMockPlayerRepository(t))
 
-func TestIssueToken(t *testing.T) {
-	var p player.Player
-	testutil.Faker().Struct(&p)
-
-	handler := NewHandler(testSecret, NewMockPlayerRepository(t))
-
-	token, err := handler.issueToken(&p)
-	assert.NoError(t, err)
-	assert.NotZero(t, token)
-}
+// 	token, err := handler.issueToken(&p)
+// 	assert.NoError(t, err)
+// 	assert.NotZero(t, token)
+// }

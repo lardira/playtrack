@@ -11,20 +11,14 @@ import (
 )
 
 type Handler struct {
-	playerService        *Service
-	playerRepository     PlayerRepository
-	playedGameRepository PlayedGameRepository
+	playerService *Service
 }
 
 func NewHandler(
 	playerService *Service,
-	playerRepository PlayerRepository,
-	playedGameRepository PlayedGameRepository,
 ) *Handler {
 	return &Handler{
-		playerService:        playerService,
-		playerRepository:     playerRepository,
-		playedGameRepository: playedGameRepository,
+		playerService: playerService,
 	}
 }
 
@@ -92,9 +86,8 @@ func (h *Handler) Register(api huma.API) {
 }
 
 func (h *Handler) GetAll(ctx context.Context, i *struct{}) (*domain.ResponseItems[Player], error) {
-	players, err := h.playerRepository.FindAll(ctx)
+	players, err := h.playerService.GetAll(ctx)
 	if err != nil {
-		log.Printf("player find all: %v", err)
 		return nil, huma.Error500InternalServerError("find all", err)
 	}
 
@@ -106,9 +99,8 @@ func (h *Handler) GetAll(ctx context.Context, i *struct{}) (*domain.ResponseItem
 func (h *Handler) GetOne(ctx context.Context, i *struct {
 	ID string `path:"id" format:"uuid"`
 }) (*domain.ResponseItem[Player], error) {
-	player, err := h.playerRepository.FindOne(ctx, i.ID)
+	player, err := h.playerService.GetOne(ctx, i.ID)
 	if err != nil {
-		log.Printf("player find one: %v", err)
 		return nil, huma.Error500InternalServerError("find", err)
 	}
 
@@ -125,19 +117,7 @@ func (h *Handler) Update(
 		return nil, huma.Error403Forbidden("player cannot access this entity")
 	}
 
-	nPlayer := PlayerUpdate{
-		ID:          i.PlayerID,
-		Username:    i.Body.Username,
-		Img:         i.Body.Img,
-		Email:       i.Body.Email,
-		Description: i.Body.Description,
-	}
-	if err := nPlayer.Valid(); err != nil {
-		log.Printf("player valid: %v", err)
-		return nil, huma.Error400BadRequest("entity is not valid", err)
-	}
-
-	id, err := h.playerRepository.Update(ctx, &nPlayer)
+	id, err := h.playerService.Update(ctx, i.PlayerID, i.Body)
 	if err != nil {
 		log.Printf("player update: %v", err)
 		return nil, huma.Error500InternalServerError("update", err)
@@ -152,9 +132,8 @@ func (h *Handler) Update(
 func (h *Handler) GetAllPlayedGames(ctx context.Context, i *struct {
 	ID string `path:"id" format:"uuid"`
 }) (*domain.ResponseItems[PlayedGame], error) {
-	games, err := h.playedGameRepository.FindAll(ctx, i.ID)
+	games, err := h.playerService.GetAllPlayedGames(ctx, i.ID)
 	if err != nil {
-		log.Printf("played games find all: %v", err)
 		return nil, huma.Error500InternalServerError("find all", err)
 	}
 
@@ -206,7 +185,6 @@ func (h *Handler) UpdatePlayedGame(
 
 	id, err := h.playerService.UpdatePlayedGame(ctx, i.PlayerID, i.GameID, &i.Body)
 	if err != nil {
-		log.Printf("played find one: %v", err)
 		return nil, huma.Error400BadRequest("entity is not found", err)
 	}
 
