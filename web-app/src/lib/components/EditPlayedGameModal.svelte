@@ -11,7 +11,10 @@
     export let onSaved: () => void = () => {};
 
     let comment = '';
+    let startedAt = '';
+    let startedTime = '';
     let completedAt = '';
+    let completedTime = '';
     let playTimeHours = 0;
     let playTimeMinutes = 0;
     let points = 0;
@@ -29,18 +32,31 @@
         { value: 'rerolled', label: 'Реролл' },
     ];
 
-    function parseCompletedAtDate(iso: string | null): string {
+    function splitDateTime(iso: string | null): { date: string; time: string } {
         if (!iso) {
             const today = new Date();
-            return today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+            const date =
+                today.getFullYear() +
+                '-' +
+                String(today.getMonth() + 1).padStart(2, '0') +
+                '-' +
+                String(today.getDate()).padStart(2, '0');
+            return { date, time: '' };
         }
-        return iso.slice(0, 10);
+        const date = iso.slice(0, 10);
+        const time = iso.slice(11, 19);
+        return { date, time };
     }
 
     $: if (isOpen && playedGame && playedGame.id !== lastOpenedId) {
         lastOpenedId = playedGame.id;
         comment = playedGame.comment ?? '';
-        completedAt = parseCompletedAtDate(playedGame.completed_at);
+        const started = splitDateTime(playedGame.started_at);
+        startedAt = started.date;
+        startedTime = started.time;
+        const completed = splitDateTime(playedGame.completed_at);
+        completedAt = completed.date;
+        completedTime = completed.time;
         points = playedGame.points;
         rating = playedGame.rating ?? '';
         status = playedGame.status;
@@ -74,13 +90,46 @@
             return;
         }
 
+        const hasCompletedStatus = status === 'completed' || status === 'dropped' || status === 'rerolled';
+
+        if (hasCompletedStatus) {
+            if (!startedAt) {
+                error = 'Укажите дату начала';
+                return;
+            }
+            if (!completedAt) {
+                error = 'Укажите дату завершения';
+                return;
+            }
+            const startTimePart = startedTime || '00:00:00';
+            const completedTimePart = completedTime || '00:01:00';
+            const startDate = new Date(`${startedAt}T${startTimePart}Z`);
+            const completedDate = new Date(`${completedAt}T${completedTimePart}Z`);
+            if (Number.isNaN(startDate.getTime())) {
+                error = 'Некорректная дата начала';
+                return;
+            }
+            if (Number.isNaN(completedDate.getTime())) {
+                error = 'Некорректная дата завершения';
+                return;
+            }
+            if (!(completedDate.getTime() > startDate.getTime())) {
+                error = 'Дата завершения должна быть позже даты начала';
+                return;
+            }
+        }
+
         loading = true;
         error = '';
 
         try {
+            const hasCompletedStatus = status === 'completed' || status === 'dropped' || status === 'rerolled';
+            const startTimePart = startedTime || '00:00:00';
+            const completedTimePart = completedTime || '00:01:00';
             const payload: Parameters<typeof updatePlayedGame>[2] = {
                 comment: comment.trim() || null,
-                completed_at: completedAt ? `${completedAt}T00:00:00Z` : null,
+                started_at: startedAt ? `${startedAt}T${startTimePart}Z` : null,
+                completed_at: hasCompletedStatus && completedAt ? `${completedAt}T${completedTimePart}Z` : null,
                 play_time: buildPlayTime(),
                 rating: ratingNum,
             };
@@ -175,16 +224,47 @@
                 </div>
             </div>
 
-            {#if status === 'completed' || status === 'dropped'}
-                <div class="space-y-1.5">
-                    <label for="edit-completed-at" class="block text-sm font-medium text-surface-300">Дата завершения (completed_at)</label>
+            <div class="space-y-1.5">
+                <label for="edit-started-at" class="block text-sm font-medium text-surface-300">Дата старта</label>
+                <div class="grid grid-cols-2 gap-3">
                     <input
-                        id="edit-completed-at"
+                        id="edit-started-at"
                         type="date"
                         class="input w-full px-3 py-2.5 rounded-lg border border-surface-600 bg-surface-800 focus:border-primary-500 focus:outline-none min-h-[2.75rem]"
-                        bind:value={completedAt}
+                        bind:value={startedAt}
                         disabled={loading}
                     />
+                    <input
+                        id="edit-started-time"
+                        type="time"
+                        step="1"
+                        class="input w-full px-3 py-2.5 rounded-lg border border-surface-600 bg-surface-800 focus:border-primary-500 focus:outline-none min-h-[2.75rem]"
+                        bind:value={startedTime}
+                        disabled={loading}
+                    />
+                </div>
+            </div>
+
+            {#if status === 'completed' || status === 'dropped' || status === 'rerolled'}
+                <div class="space-y-1.5">
+                    <label for="edit-completed-at" class="block text-sm font-medium text-surface-300">Дата завершения</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input
+                            id="edit-completed-at"
+                            type="date"
+                            class="input w-full px-3 py-2.5 rounded-lg border border-surface-600 bg-surface-800 focus:border-primary-500 focus:outline-none min-h-[2.75rem]"
+                            bind:value={completedAt}
+                            disabled={loading}
+                        />
+                        <input
+                            id="edit-completed-time"
+                            type="time"
+                            step="1"
+                            class="input w-full px-3 py-2.5 rounded-lg border border-surface-600 bg-surface-800 focus:border-primary-500 focus:outline-none min-h-[2.75rem]"
+                            bind:value={completedTime}
+                            disabled={loading}
+                        />
+                    </div>
                 </div>
             {/if}
 

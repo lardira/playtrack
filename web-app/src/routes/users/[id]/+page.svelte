@@ -85,9 +85,10 @@
     $: playerColor = player ? getPlayerColor(player.username) : "#f97316";
     $: isOwnProfile = !!currentUser && !!player && currentUser.id === player.id;
 
-    $: totalGames = playedGames.length;
-    $: totalPoints = playedGames.reduce((sum, pg) => sum + pg.points, 0);
-    $: gamesExcludingReroll = playedGames.filter((pg) => pg.status !== "rerolled");
+    $: countedGames = playedGames.filter((pg) => pg.status !== "in_progress");
+    $: totalGames = countedGames.length;
+    $: totalPoints = countedGames.reduce((sum, pg) => sum + pg.points, 0);
+    $: gamesExcludingReroll = countedGames.filter((pg) => pg.status !== "rerolled");
     $: completedCount = playedGames.filter((pg) => pg.status === "completed").length;
     $: completedPercent =
         gamesExcludingReroll.length > 0
@@ -149,7 +150,12 @@
     let gameDropdownOpen = false;
     let gameDropdownBlurTimeout: ReturnType<typeof setTimeout> | null = null;
 
-    $: searchQuery = newRecordTitle.trim().toLowerCase();
+    function normalizeTitle(value: string): string {
+        return value.trim().replace(/\s+/g, " ");
+    }
+
+    $: normalizedTitle = normalizeTitle(newRecordTitle);
+    $: searchQuery = normalizedTitle.toLowerCase();
     $: searchResults =
         searchQuery.length < 2
             ? []
@@ -199,7 +205,8 @@
 
     async function submitNewRecord() {
         if (!player || player.id !== currentUser?.id) return;
-        const title = newRecordTitle.trim();
+        const title = normalizeTitle(newRecordTitle);
+        newRecordTitle = title;
         if (!title) {
             createError = "Введите название игры";
             return;
@@ -210,7 +217,7 @@
         );
         if (hasNonTerminated) {
             createError =
-                "Сначала завершите текущую игру (Пройдено / Дроп / Реролл) или измените её статус в карточке выше.";
+                "Сначала завершите текущую игру или измените её статус в карточке (Пройдено / Дроп / Реролл).";
             return;
         }
 
@@ -219,7 +226,11 @@
 
         try {
             let gameId: number;
-            if (selectedGame) {
+            const selectedTitle = selectedGame ? normalizeTitle(selectedGame.title) : null;
+            const useExistingGame =
+                !!selectedGame && !!selectedTitle && selectedTitle.toLowerCase() === title.toLowerCase();
+
+            if (useExistingGame && selectedGame) {
                 gameId = selectedGame.id;
             } else {
                 const { id } = await createGame({
@@ -533,7 +544,7 @@
                                     <p class="font-bold" style={`color:${playerColor}`}>{playedGame.points}</p>
                                 </div>
                                 <div>
-                                    <span class="text-surface-400">Время игры (play_time)</span>
+                                    <span class="text-surface-400">Время игры</span>
                                     <p class="font-bold">{playedGame.play_time ? formatPlayTime(playedGame.play_time) : "0"}</p>
                                 </div>
                                 <div>
@@ -541,7 +552,7 @@
                                     <p class="font-bold">{playedGame.rating != null ? `${playedGame.rating}/100` : "—"}</p>
                                 </div>
                                 <div>
-                                    <span class="text-surface-400">Дата старта (started_at)</span>
+                                    <span class="text-surface-400">Дата старта</span>
                                     <p class="font-bold">{formatDate(playedGame.started_at)}</p>
                                 </div>
                                 {#if playedGame.completed_at}

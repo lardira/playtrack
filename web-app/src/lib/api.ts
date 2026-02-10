@@ -3,8 +3,9 @@ import { browser } from '$app/environment';
 import { getTokenFromCookie } from './cookies';
 import { getCurrentToken } from './tokenHolder';
 import { env } from '$env/dynamic/public';
+import { parseApiError } from './errors';
 
-const baseURL = env.PUBLIC_API_URL ?? '/api'
+const baseURL = env.PUBLIC_API_URL ?? '/api';
 
 export async function api<T>(url: string, options: RequestInit = {}): Promise<T> {
     const token = browser ? (getTokenFromCookie() ?? getCurrentToken()) : null;
@@ -12,36 +13,21 @@ export async function api<T>(url: string, options: RequestInit = {}): Promise<T>
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
     try {
-        const res = await fetch(baseURL + url, { ...options, headers, mode: 'cors', credentials:'include' });
+        const res = await fetch(baseURL + url, { ...options, headers, mode: 'cors', credentials: 'include' });
         const text = await res.text();
 
         if (!res.ok) {
-            let errorMessage = `HTTP ${res.status}: ${res.statusText}`;
-            try {
-                const errorData = text ? JSON.parse(text) : {};
-                if (errorData.message) {
-                    errorMessage = errorData.message;
-                } else if (errorData.body?.message) {
-                    errorMessage = errorData.body.message;
-                } else if (typeof errorData === 'string') {
-                    errorMessage = errorData;
-                }
-            } catch {
-                if (text) errorMessage = text;
-            }
+            const errorMessage = parseApiError(res.status, res.statusText, text);
             throw new Error(errorMessage);
         }
 
         return (text ? JSON.parse(text) : {}) as T;
     } catch (error: any) {
         if (error.name === 'TypeError' && error.message.includes('fetch')) {
-            throw new Error(
-                `Ошибка: ${error.message}`
-            );
+            throw new Error(`Ошибка сети: ${error.message}`);
         }
         throw error;
     }
-
 }
 
 export interface LoginRequest {
@@ -77,10 +63,6 @@ export interface PlayerResponse {
     item: Player;
 }
 
-function unwrapBody<T>(res: { Body?: T; body?: T }): T | undefined {
-    return res.Body ?? res.body;
-}
-
 export const login = async (data: LoginRequest): Promise<LoginResponse> => {
     const response = await api<{ token?: string; Token?: string }>('/pub/auth/login', {
         method: 'POST',
@@ -92,47 +74,42 @@ export const login = async (data: LoginRequest): Promise<LoginResponse> => {
 };
 
 export const register = async (data: RegisterRequest): Promise<RegisterResponse> => {
-    const response = await api<{ Body?: { id: string }; body?: { id: string }; id?: string }>('/pub/auth/register', {
+    const response = await api<{ id: string }>('/pub/auth/register', {
         method: 'POST',
         body: JSON.stringify(data)
     });
-    const id = unwrapBody(response)?.id ?? response.id;
-    if (!id) throw new Error('No id in response');
-    return { id };
+    if (!response.id) throw new Error('No id in response');
+    return { id: response.id };
 };
 
 export const setPassword = async (data: SetPasswordRequest): Promise<SetPasswordResponse> => {
-    const response = await api<{ Body?: { id: string }; body?: { id: string }; id?: string }>('/pub/set-password', {
+    const response = await api<{ id: string }>('/pub/auth/set-password', {
         method: 'PATCH',
         body: JSON.stringify(data)
     });
-    const id = unwrapBody(response)?.id ?? response.id;
-    if (!id) throw new Error('No id in response');
-    return { id };
+    if (!response.id) throw new Error('No id in response');
+    return { id: response.id };
 };
 
-function getItems<T>(r: { Body?: { items: T[] }; body?: { items: T[] }; items?: T[] }): T[] {
-    const wrap = r.Body ?? r.body;
-    return wrap?.items ?? r.items ?? [];
+function getItems<T>(r: { items: T[] }): T[] {
+    return r.items ?? [];
 }
-function getItem<T>(r: { Body?: { item: T }; body?: { item: T }; item?: T }): T {
-    const wrap = r.Body ?? r.body;
-    const item = wrap?.item ?? (r as { item?: T }).item;
-    if (item == null) throw new Error('No item in response');
-    return item;
+function getItem<T>(r: { item: T }): T {
+    if (r.item == null) throw new Error('No item in response');
+    return r.item;
 }
 
 export const getPlayers = () =>
-    api<{ Body?: { items: Player[] }; body?: { items: Player[] }; items?: Player[] }>('/v1/players/').then(getItems);
+    api<{ items: Player[] }>('/v1/players/').then(getItems);
 export const getPlayer = (id: string) =>
-    api<{ Body?: { item: Player }; body?: { item: Player }; item?: Player }>(`/v1/players/${id}`).then(getItem);
+    api<{ item: Player }>(`/v1/players/${id}`).then(getItem);
 export const getPlayerPlayedGames = (playerId: string) =>
-    api<{ Body?: { items: PlayedGame[] }; body?: { items: PlayedGame[] }; items?: PlayedGame[] }>(
+    api<{ items: PlayedGame[] }>(
         `/v1/players/${playerId}/played-games`
     ).then(getItems);
 
 export const getPlayerPlayedGame = (playerId: string, playedGameId: number) =>
-    api<{ Body?: { item: PlayedGame }; body?: { item: PlayedGame }; item?: PlayedGame }>(
+    api<{ item: PlayedGame }>(
         `/v1/players/${playerId}/played-games/${playedGameId}`
     ).then(getItem);
 
@@ -143,21 +120,20 @@ export interface UpdatePlayerRequest {
     description?: string | null;
 }
 export const updatePlayer = async (playerId: string, data: UpdatePlayerRequest): Promise<{ id: string }> => {
-    const response = await api<{ Body?: { id: string }; body?: { id: string } }>(`/v1/players/${playerId}`, {
+    const response = await api<{ id: string }>(`/v1/players/${playerId}`, {
         method: 'PATCH',
         body: JSON.stringify(data)
     });
-    const id = (response as any)?.id;
-    if (!id) throw new Error('No id in response');
-    return { id };
+    if (!response.id) throw new Error('No id in response');
+    return { id: response.id };
 };
 
 export const getLeaderboard = () => api<LeaderboardPlayer[]>('/v1/players/leaderboard');
 
 export const getGames = () =>
-    api<{ Body?: { items: Game[] }; body?: { items: Game[] }; items?: Game[] }>('/v1/games/').then(getItems);
+    api<{ items: Game[] }>('/v1/games/').then(getItems);
 export const getGame = (id: number) =>
-    api<{ Body?: { item: Game }; body?: { item: Game }; item?: Game }>(`/v1/games/${id}`).then(getItem);
+    api<{ item: Game }>(`/v1/games/${id}`).then(getItem);
 
 export interface CreateGameRequest {
     title: string;
@@ -165,26 +141,24 @@ export interface CreateGameRequest {
     url?: string | null;
 }
 export const createGame = async (data: CreateGameRequest): Promise<{ id: number }> => {
-    const response = await api<{ Body?: { id: number }; body?: { id: number }; id?: number }>('/v1/games/', {
+    const response = await api<{ id: number }>('/v1/games/', {
         method: 'POST',
         body: JSON.stringify(data)
     });
-    const id = (response as any).Body?.id ?? (response as any).body?.id ?? (response as any).id;
-    if (id == null) throw new Error('No id in response');
-    return { id };
+    if (response.id == null) throw new Error('No id in response');
+    return { id: response.id };
 };
 
 export const createPlayedGame = async (playerId: string, gameId: number): Promise<{ id: number }> => {
-    const response = await api<{ Body?: { id: number }; body?: { id: number }; id?: number }>(
+    const response = await api<{ id: number }>(
         `/v1/players/${playerId}/played-games`,
         {
             method: 'POST',
             body: JSON.stringify({ game_id: gameId })
         }
     );
-    const id = (response as any)?.id;
-    if (id == null) throw new Error('No id in response');
-    return { id };
+    if (response.id == null) throw new Error('No id in response');
+    return { id: response.id };
 };
 
 export interface UpdatePlayedGameRequest {
@@ -192,6 +166,7 @@ export interface UpdatePlayedGameRequest {
     comment?: string | null;
     rating?: number | null;
     status?: import('./types').PlayedGameStatus;
+    started_at?: string | null;
     completed_at?: string | null;
     play_time?: string | null;
 }
@@ -201,14 +176,13 @@ export const updatePlayedGame = async (
     playedGameId: number,
     data: UpdatePlayedGameRequest
 ): Promise<{ id: number }> => {
-    const response = await api<{ Body?: { id: number }; body?: { id: number } }>(
+    const response = await api<{ id: number }>(
         `/v1/players/${playerId}/played-games/${playedGameId}`,
         {
             method: 'PATCH',
             body: JSON.stringify(data)
         }
     );
-    const id = (response as any).Body?.id ?? (response as any).body?.id ?? (response as any).id;
-    if (id == null) throw new Error('No id in response');
-    return { id };
+    if (response.id == null) throw new Error('No id in response');
+    return { id: response.id };
 };
