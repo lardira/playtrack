@@ -13,6 +13,7 @@
     import ChangePasswordModal from "../../../lib/components/ChangePasswordModal.svelte";
     import EditDescriptionModal from "../../../lib/components/EditDescriptionModal.svelte";
     import EditPlayedGameModal from "../../../lib/components/EditPlayedGameModal.svelte";
+    import { getPlayerColor } from "../../../lib/colorUtils";
 
     let player: Player | null = null;
     let loading = true;
@@ -28,21 +29,6 @@
 
     $: gamesMap = Object.fromEntries(allGames.map((g) => [g.id, g])) as Record<number, Game>;
     $: gameTitle = (gameId: number) => gamesMap[gameId]?.title ?? `ID: ${gameId}`;
-
-    function getPlayerColor(username: string): string {
-        const colors = [
-            "#f97316",
-            "#22c55e",
-            "#3b82f6",
-            "#a855f7",
-            "#ec4899",
-            "#14b8a6",
-        ];
-        const hash = username
-            .split("")
-            .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        return colors[hash % colors.length];
-    }
 
     const STATUS_META: Record<string, { label: string; color: string }> = {
         completed: { label: "Пройдено", color: "#22c55e" },
@@ -507,8 +493,8 @@
                                 <p class="text-lg font-semibold truncate">
                                     {gameTitle(playedGame.game_id)}
                                 </p>
-                                <p class="text-sm text-surface-400">
-                                    {STATUS_META[playedGame.status].label}
+                                <p class="text-sm text-surface-400 min-w-0 truncate">
+                                    {isExpanded ? STATUS_META[playedGame.status].label : (playedGame.comment?.trim() || STATUS_META[playedGame.status].label)}
                                 </p>
                             </div>
                         </button>
