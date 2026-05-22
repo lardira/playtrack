@@ -6,7 +6,6 @@
 	import { getPlayerColor } from "../lib/colorUtils";
 	import {
 		isActiveStatus,
-		isTerminatedStatus,
 		summarizePlayedGamesForLeaderboard,
 	} from "../helpers/playedGameStatus";
 	import { sortByStartedAtDesc, formatLocaleDate } from "../helpers/dateTime";

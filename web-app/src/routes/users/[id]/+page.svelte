@@ -14,6 +14,7 @@
     import EditDescriptionModal from "../../../lib/components/EditDescriptionModal.svelte";
     import EditPlayedGameModal from "../../../lib/components/EditPlayedGameModal.svelte";
     import { getPlayerColor } from "../../../lib/colorUtils";
+    import { PlayedGameStatus, PLAYED_GAME_STATUS_META } from "../../../lib/playedGameStatus";
     import { computeProfileStats, hasNonTerminatedGame } from "../../../helpers/playedGameStatus";
     import { formatDisplayDate, formatLocaleDate } from "../../../helpers/dateTime";
     import { createLoadGuard } from "../../../helpers/loadGuard";
@@ -32,14 +33,6 @@
 
     $: gamesMap = Object.fromEntries(allGames.map((g) => [g.id, g])) as Record<number, Game>;
     $: gameTitle = (gameId: number) => gamesMap[gameId]?.title ?? `ID: ${gameId}`;
-
-    const STATUS_META: Record<string, { label: string; color: string }> = {
-        completed: { label: "Пройдено", color: "#22c55e" },
-        dropped: { label: "Дроп", color: "#ef4444" },
-        rerolled: { label: "Реролл", color: "#38bdf8" },
-        in_progress: { label: "В процессе", color: "#facc15" },
-        added: { label: "Добавлено", color: "#94a3b8" },
-    };
 
     $: id = $page.params.id;
 
@@ -222,7 +215,9 @@
             }
 
             const { id: playedGameId } = await createPlayedGame(player.id, gameId);
-            await updatePlayedGame(player.id, playedGameId, { status: "in_progress" });
+            await updatePlayedGame(player.id, playedGameId, {
+                status: PlayedGameStatus.InProgress,
+            });
 
             const [updatedPlayed, updatedGames] = await Promise.all([
                 getPlayerPlayedGames(player.id),
@@ -468,7 +463,7 @@
                 {@const isExpanded = expandedPlayedId === playedGame.id}
                 <div
                     class="group rounded-xl p-5 bg-surface shadow-md transition hover:shadow-xl"
-                    style={`border-left: 6px solid ${STATUS_META[playedGame.status].color}`}
+                    style={`border-left: 6px solid ${PLAYED_GAME_STATUS_META[playedGame.status].color}`}
                 >
                     <div
                         class="flex flex-col md:flex-row md:items-center gap-4"
@@ -488,7 +483,7 @@
                                     {gameTitle(playedGame.game_id)}
                                 </p>
                                 <p class="text-sm text-surface-400 min-w-0 truncate">
-                                    {isExpanded ? STATUS_META[playedGame.status].label : (playedGame.comment?.trim() || STATUS_META[playedGame.status].label)}
+                                    {isExpanded ? PLAYED_GAME_STATUS_META[playedGame.status].label : (playedGame.comment?.trim() || PLAYED_GAME_STATUS_META[playedGame.status].label)}
                                 </p>
                             </div>
                         </button>

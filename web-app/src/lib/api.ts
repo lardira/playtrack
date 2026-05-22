@@ -165,7 +165,7 @@ export interface UpdatePlayedGameRequest {
     points?: number;
     comment?: string | null;
     rating?: number | null;
-    status?: import('./types').PlayedGameStatus;
+    status?: import('./playedGameStatus').PlayedGameStatus;
     started_at?: string | null;
     completed_at?: string | null;
     play_time?: string | null;

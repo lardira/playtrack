@@ -1,8 +1,9 @@
 <script lang="ts">
     import Modal from './Modal.svelte';
     import { updatePlayedGame } from '../api';
-    import type { PlayedGame, PlayedGameStatus } from '../types';
-    import { isTerminatedStatus } from '../../helpers/playedGameStatus';
+    import type { PlayedGame } from '../types';
+    import { PlayedGameStatus, EDIT_STATUS_OPTIONS } from '../playedGameStatus';
+    import { isActiveStatus } from '../../helpers/playedGameStatus';
     import {
         splitIsoDateTime,
         DEFAULT_START_TIME,
@@ -28,18 +29,10 @@
     let playTimeMinutes = 0;
     let points = 0;
     let rating: number | '' = '';
-    let status: PlayedGameStatus = 'in_progress';
+    let status: PlayedGameStatus = PlayedGameStatus.InProgress;
     let loading = false;
     let error = '';
     let lastOpenedId: number | null = null;
-
-    const STATUS_OPTIONS: { value: PlayedGameStatus; label: string }[] = [
-        { value: 'added', label: 'Добавлено' },
-        { value: 'in_progress', label: 'В процессе' },
-        { value: 'completed', label: 'Пройдено' },
-        { value: 'dropped', label: 'Дроп' },
-        { value: 'rerolled', label: 'Реролл' },
-    ];
 
     $: if (isOpen && playedGame && playedGame.id !== lastOpenedId) {
         lastOpenedId = playedGame.id;
@@ -83,7 +76,7 @@
             return;
         }
 
-        const terminated = isTerminatedStatus(status);
+        const terminated = !isActiveStatus(status);
 
         if (terminated) {
             if (!startedAt) {
@@ -161,7 +154,7 @@
                 <div class="space-y-1.5 pr-6 border-r-2 border-surface-600">
                     <label for="edit-status" class="block text-sm font-medium text-surface-300">Статус</label>
                     <select id="edit-status" class="input w-full px-3 py-2.5 rounded-lg border border-surface-600 bg-surface-800 focus:border-primary-500 focus:outline-none min-h-[2.75rem]" bind:value={status} disabled={loading}>
-                        {#each STATUS_OPTIONS as opt}
+                        {#each EDIT_STATUS_OPTIONS as opt}
                             <option value={opt.value}>{opt.label}</option>
                         {/each}
                     </select>
@@ -231,7 +224,7 @@
                 </div>
             </div>
 
-            {#if isTerminatedStatus(status)}
+            {#if !isActiveStatus(status)}
                 <div class="space-y-1.5">
                     <label for="edit-completed-at" class="block text-sm font-medium text-surface-300">Дата завершения</label>
                     <div class="grid grid-cols-2 gap-3">
