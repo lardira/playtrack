@@ -12,7 +12,6 @@ func TestValidGame(t *testing.T) {
 	url := testutil.Faker().URL()
 	title := testutil.Faker().Word()
 	validHours := testutil.Faker().IntRange(MinGameHoursToBeat, 100)
-	invalidURL := "example.cra"
 
 	tcases := []struct {
 		name        string
@@ -39,7 +38,7 @@ func TestValidGame(t *testing.T) {
 			"invalid url",
 			title,
 			validHours,
-			&invalidURL,
+			new("example.cra"),
 			ErrInvalidGameSiteURL,
 		},
 		{

@@ -58,8 +58,7 @@ func TestPlayerValid(t *testing.T) {
 			"invalid image url",
 			func() PlayerParams {
 				p := validParams
-				img := "test string"
-				p.Img = &img
+				p.Img = new("test string")
 				return p
 			},
 			ErrInvalidURL,
@@ -68,8 +67,7 @@ func TestPlayerValid(t *testing.T) {
 			"invalid email address",
 			func() PlayerParams {
 				p := validParams
-				email := testutil.Faker().URL()
-				p.Email = &email
+				p.Email = new(testutil.Faker().URL())
 				return p
 			},
 			ErrInvalidEmail,
@@ -78,8 +76,7 @@ func TestPlayerValid(t *testing.T) {
 			"invalid description length",
 			func() PlayerParams {
 				p := validParams
-				descr := strings.Repeat("t", MaxTextLength+1)
-				p.Description = &descr
+				p.Description = new(strings.Repeat("t", MaxTextLength+1))
 				return p
 			},
 			ErrTextFieldLen,
@@ -97,17 +94,16 @@ func TestPlayerValid(t *testing.T) {
 
 func TestPlayedGame(t *testing.T) {
 	now := time.Now()
-	comment := testutil.Faker().Sentence()
-	rating := testutil.Faker().IntRange(minRating, maxRating)
+
 	validParams := PlayedGameParams{
 		PlayerID:  uuid.NewString(),
 		GameID:    testutil.Faker().Int(),
 		Points:    0,
-		Comment:   &comment,
-		Rating:    &rating,
+		Comment:   new(testutil.Faker().Sentence()),
+		Rating:    new(testutil.Faker().IntRange(minRating, maxRating)),
 		Status:    PlayedGameStatusAdded,
-		StartedAt: now,
-		PlayTime:  &types.DurationString{},
+		StartedAt: time.Now(),
+		PlayTime:  new(types.DurationString),
 	}
 
 	tcases := []struct {
@@ -135,8 +131,7 @@ func TestPlayedGame(t *testing.T) {
 			"min rating",
 			func() PlayedGameParams {
 				p := validParams
-				r := minRating - 1
-				p.Rating = &r
+				p.Rating = new(minRating - 1)
 				return p
 			},
 			ErrGameRating,
@@ -145,8 +140,7 @@ func TestPlayedGame(t *testing.T) {
 			"max rating",
 			func() PlayedGameParams {
 				p := validParams
-				r := maxRating + 1
-				p.Rating = &r
+				p.Rating = new(maxRating + 1)
 				return p
 			},
 			ErrGameRating,
@@ -164,8 +158,7 @@ func TestPlayedGame(t *testing.T) {
 			"comment too long",
 			func() PlayedGameParams {
 				p := validParams
-				c := strings.Repeat("t", MaxTextLength+1)
-				p.Comment = &c
+				p.Comment = new(strings.Repeat("t", MaxTextLength+1))
 				return p
 			},
 			ErrTextFieldLen,
@@ -271,13 +264,12 @@ func TestPlayedGameComplete(t *testing.T) {
 
 func validPlayer() Player {
 	url := testutil.Faker().URL()
-	email := testutil.Faker().Email()
 	password := testutil.Faker().Password(true, true, true, true, false, MinPasswordLength)
 
 	p, _ := NewPlayer(PlayerParams{
 		Username:    testutil.Faker().Username(),
 		Img:         &url,
-		Email:       &email,
+		Email:       new(testutil.Faker().Email()),
 		Password:    password,
 		Description: &testutil.Faker().Address().Address,
 	})
