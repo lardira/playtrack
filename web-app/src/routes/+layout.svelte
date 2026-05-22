@@ -19,7 +19,7 @@
 	import { onMount } from "svelte";
 	import type { Player } from "../lib/types";
 	import { getPlayers } from "../lib/api";
-	import { getPlayerColor } from "../lib/colorUtils";
+	import { getPlayerColorBorderTextStyle } from "../lib/colorUtils";
 
 	const AVAILABLE_THEMES = [
 		"crimson",
@@ -52,6 +52,7 @@
 	let players: Player[] = [];
 	let currentTheme: string = AVAILABLE_THEMES[0];
 	let themePickerOpen = false;
+	let playersFetchGen = 0;
 
 	function getThemeStorageKey(u: Player | null): string {
 		return u ? `playtrack-theme-${u.id}` : "playtrack-theme-guest";
@@ -83,28 +84,42 @@
 		goto("/login");
 	}
 
+	function fetchPlayersForHeader() {
+		if (!$token) {
+			players = [];
+			return;
+		}
+		const gen = ++playersFetchGen;
+		getPlayers()
+			.then((list) => {
+				if (gen === playersFetchGen) players = list;
+			})
+			.catch(() => {
+				if (gen === playersFetchGen) players = [];
+			});
+	}
+
 	onMount(() => {
-		user.subscribe((value) => {
+		const unsubUser = user.subscribe((value) => {
 			currentUser = value;
 			loadThemeForUser(currentUser);
 		});
-		if ($token) {
-			getPlayers()
-				.then((list) => (players = list))
-				.catch(() => (players = []));
-		}
-		token.subscribe((t) => {
-			if (t) {
-				getPlayers()
-					.then((list) => (players = list))
-					.catch(() => (players = []));
-			} else {
+		fetchPlayersForHeader();
+		const unsubToken = token.subscribe((t) => {
+			if (!t) {
 				players = [];
+				playersFetchGen++;
+				return;
 			}
+			fetchPlayersForHeader();
 		});
 		if (currentUser === null) {
 			loadThemeForUser(null);
 		}
+		return () => {
+			unsubUser();
+			unsubToken();
+		};
 	});
 
 	function logout() {
@@ -132,10 +147,7 @@
 							<a
 								href={`/users/${player.id}`}
 								class="player-pill btn btn-sm border-2 transition hover:scale-105 whitespace-nowrap flex-shrink-0"
-								style={`
-									border-color: ${getPlayerColor(player.username)};
-									color: ${getPlayerColor(player.username)};
-								`}
+								style={getPlayerColorBorderTextStyle(player.username)}
 							>
 								{player.username}
 							</a>

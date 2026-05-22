@@ -2,6 +2,15 @@
     import Modal from './Modal.svelte';
     import { updatePlayedGame } from '../api';
     import type { PlayedGame, PlayedGameStatus } from '../types';
+    import { isTerminatedStatus } from '../../helpers/playedGameStatus';
+    import {
+        splitIsoDateTime,
+        DEFAULT_START_TIME,
+        DEFAULT_COMPLETED_TIME,
+        toUtcIsoString,
+        isValidUtcDateTime,
+        isCompletedAfterStart,
+    } from '../../helpers/dateTime';
 
     export let isOpen = false;
     export let onClose: () => void = () => {};
@@ -32,29 +41,13 @@
         { value: 'rerolled', label: 'Реролл' },
     ];
 
-    function splitDateTime(iso: string | null): { date: string; time: string } {
-        if (!iso) {
-            const today = new Date();
-            const date =
-                today.getFullYear() +
-                '-' +
-                String(today.getMonth() + 1).padStart(2, '0') +
-                '-' +
-                String(today.getDate()).padStart(2, '0');
-            return { date, time: '' };
-        }
-        const date = iso.slice(0, 10);
-        const time = iso.slice(11, 19);
-        return { date, time };
-    }
-
     $: if (isOpen && playedGame && playedGame.id !== lastOpenedId) {
         lastOpenedId = playedGame.id;
         comment = playedGame.comment ?? '';
-        const started = splitDateTime(playedGame.started_at);
+        const started = splitIsoDateTime(playedGame.started_at);
         startedAt = started.date;
         startedTime = started.time;
-        const completed = splitDateTime(playedGame.completed_at);
+        const completed = splitIsoDateTime(playedGame.completed_at);
         completedAt = completed.date;
         completedTime = completed.time;
         points = playedGame.points;
@@ -90,9 +83,9 @@
             return;
         }
 
-        const hasCompletedStatus = status === 'completed' || status === 'dropped' || status === 'rerolled';
+        const terminated = isTerminatedStatus(status);
 
-        if (hasCompletedStatus) {
+        if (terminated) {
             if (!startedAt) {
                 error = 'Укажите дату начала';
                 return;
@@ -101,19 +94,15 @@
                 error = 'Укажите дату завершения';
                 return;
             }
-            const startTimePart = startedTime || '00:00:00';
-            const completedTimePart = completedTime || '00:01:00';
-            const startDate = new Date(`${startedAt}T${startTimePart}Z`);
-            const completedDate = new Date(`${completedAt}T${completedTimePart}Z`);
-            if (Number.isNaN(startDate.getTime())) {
+            if (!isValidUtcDateTime(startedAt, startedTime, DEFAULT_START_TIME)) {
                 error = 'Некорректная дата начала';
                 return;
             }
-            if (Number.isNaN(completedDate.getTime())) {
+            if (!isValidUtcDateTime(completedAt, completedTime, DEFAULT_COMPLETED_TIME)) {
                 error = 'Некорректная дата завершения';
                 return;
             }
-            if (!(completedDate.getTime() > startDate.getTime())) {
+            if (!isCompletedAfterStart(startedAt, startedTime, completedAt, completedTime)) {
                 error = 'Дата завершения должна быть позже даты начала';
                 return;
             }
@@ -123,13 +112,10 @@
         error = '';
 
         try {
-            const hasCompletedStatus = status === 'completed' || status === 'dropped' || status === 'rerolled';
-            const startTimePart = startedTime || '00:00:00';
-            const completedTimePart = completedTime || '00:01:00';
             const payload: Parameters<typeof updatePlayedGame>[2] = {
                 comment: comment.trim() || null,
-                started_at: startedAt ? `${startedAt}T${startTimePart}Z` : null,
-                completed_at: hasCompletedStatus && completedAt ? `${completedAt}T${completedTimePart}Z` : null,
+                started_at: startedAt ? toUtcIsoString(startedAt, startedTime, DEFAULT_START_TIME) : null,
+                completed_at: terminated && completedAt ? toUtcIsoString(completedAt, completedTime, DEFAULT_COMPLETED_TIME) : null,
                 play_time: buildPlayTime(),
                 rating: ratingNum,
             };
@@ -245,7 +231,7 @@
                 </div>
             </div>
 
-            {#if status === 'completed' || status === 'dropped' || status === 'rerolled'}
+            {#if isTerminatedStatus(status)}
                 <div class="space-y-1.5">
                     <label for="edit-completed-at" class="block text-sm font-medium text-surface-300">Дата завершения</label>
                     <div class="grid grid-cols-2 gap-3">

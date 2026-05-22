@@ -1,3 +1,8 @@
+export function getPlayerColorBorderTextStyle(username: string): string {
+    const color = getPlayerColor(username);
+    return `border-color: ${color}; color: ${color};`;
+}
+
 export function getPlayerColor(username: string): string {
     let hash = 0;
     for (let i = 0; i < username.length; i++) {
