@@ -171,8 +171,7 @@ func playedGameFromRow(row pgx.Row) (*PlayedGame, error) {
 		return nil, err
 	}
 	if ptime != nil {
-		ds := types.NewDurationString(*ptime)
-		p.PlayTime = &ds
+		p.PlayTime = new(types.NewDurationString(*ptime))
 	}
 	return &p, nil
 }

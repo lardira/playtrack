@@ -6,7 +6,7 @@ import (
 
 	"github.com/alecthomas/assert/v2"
 	"github.com/lardira/playtrack/internal/pkg/testutil"
-	mock "github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestGetAll(t *testing.T) {
