@@ -56,6 +56,12 @@ export async function loadUserFromToken(): Promise<void> {
         }
     } catch (error) {
         console.error('Failed to load user:', error);
+        const message = error instanceof Error ? error.message : '';
+        const isNetworkFailure =
+            message.includes('Ошибка сети') || message.includes('Failed to fetch');
+        if (isNetworkFailure) {
+            return;
+        }
         user.set(null);
         token.set(null);
         if (browser) {
@@ -70,6 +76,9 @@ if (browser) {
     setCurrentToken(currentToken);
     if (currentToken) {
         loadUserFromToken();
+    } else {
+        user.set(null);
+        localStorage.removeItem('user');
     }
 
     token.subscribe((value) => {

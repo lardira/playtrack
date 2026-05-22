@@ -3,11 +3,18 @@
 	import { user } from "../stores/user";
 	import type { Player, LeaderboardRow } from "../lib/types";
 	import { getPlayers, getGames, getPlayerPlayedGames } from "../lib/api";
+	import { getPlayerColor } from "../lib/colorUtils";
+	import {
+		isActiveStatus,
+		summarizePlayedGamesForLeaderboard,
+	} from "../helpers/playedGameStatus";
+	import { sortByStartedAtDesc, formatLocaleDate } from "../helpers/dateTime";
 
 	let currentUser: Player | null = null;
 	let leaderboardRows: LeaderboardRow[] = [];
 	let loading = true;
 	let loadError = "";
+	let loadGeneration = 0;
 
 	const placeStyles = [
 		{
@@ -30,20 +37,6 @@
 		},
 	];
 
-	function getPlayerColor(username: string): string {
-		const colors = [
-			"#f97316",
-			"#22c55e",
-			"#3b82f6",
-			"#a855f7",
-			"#ec4899",
-			"#14b8a6",
-		];
-		const hash = username
-			.split("")
-			.reduce((acc, char) => acc + char.charCodeAt(0), 0);
-		return colors[hash % colors.length];
-	}
 
 	$: sortedByPoints = [...leaderboardRows].sort((a, b) => b.points - a.points);
 	$: topThree = sortedByPoints.slice(0, 3);
@@ -53,35 +46,24 @@
 	}
 
 	onMount(() => {
-		user.subscribe((value) => (currentUser = value));
+		const unsubUser = user.subscribe((value) => (currentUser = value));
+		const gen = ++loadGeneration;
+
 		Promise.all([getPlayers(), getGames()])
 			.then(([players, games]) => {
+				if (gen !== loadGeneration) return;
 				const gamesMap = new Map(games.map((g) => [g.id, g]));
 				return Promise.all(
 					players.map((player) =>
 						getPlayerPlayedGames(player.id)
 							.then((played) => {
-								const notTerminated = played.filter(
-									(p) => p.status === "added" || p.status === "in_progress"
-								);
-								const lastInProgress = [...notTerminated].sort(
-									(a, b) =>
-										new Date(b.started_at).getTime() -
-										new Date(a.started_at).getTime()
-								)[0];
+								const active = played.filter((p) => isActiveStatus(p.status));
+								const lastInProgress = sortByStartedAtDesc(active)[0];
 								const currentGame = lastInProgress
 									? gamesMap.get(lastInProgress.game_id)?.title ?? null
 									: null;
-								const terminated = played.filter(
-									(p) =>
-										p.status === "completed" ||
-										p.status === "dropped" ||
-										p.status === "rerolled"
-								);
-								const points = terminated.reduce((s, p) => s + p.points, 0);
-								const completed = played.filter((p) => p.status === "completed").length;
-								const dropped = played.filter((p) => p.status === "dropped").length;
-								const rerolled = played.filter((p) => p.status === "rerolled").length;
+								const { points, completed, dropped, rerolled } =
+									summarizePlayedGamesForLeaderboard(played);
 								return {
 									player,
 									currentGame,
@@ -101,15 +83,24 @@
 							}))
 					)
 				).then((rows) => {
+					if (gen !== loadGeneration) return;
 					leaderboardRows = rows;
 					loadError = "";
 				});
 			})
 			.catch((err) => {
+				if (gen !== loadGeneration) return;
 				loadError = err?.message ?? "Не удалось загрузить данные";
 				leaderboardRows = [];
 			})
-			.finally(() => (loading = false));
+			.finally(() => {
+				if (gen === loadGeneration) loading = false;
+			});
+
+		return () => {
+			loadGeneration++;
+			unsubUser();
+		};
 	});
 </script>
 
@@ -118,10 +109,10 @@
 	class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-600/20 via-surface-900 to-secondary-600/20 p-10 text-center shadow-xl"
 >
 	<h1 class="text-4xl font-extrabold tracking-tight mb-3">
-		Welcome to <span class="text-primary-400">PlayTrack</span>
+		<span class="text-primary-400">SEASON II</span> HERE
 	</h1>
 	<p class="text-lg text-surface-300 max-w-xl mx-auto">
-		Отслеживай свои игры, сравнивайте статистику и доказывай, что ты лучший.
+		<strong>Давно тебя не было в уличных гонках...</strong> 
 	</p>
 
 	<!-- <div class="mt-6 flex justify-center gap-3">
@@ -197,9 +188,7 @@
 				{/if}
 
 				<div class="text-sm text-surface-400">
-					Зарегистрирован: {new Date(
-						player.created_at,
-					).toLocaleDateString()}
+					Зарегистрирован: {formatLocaleDate(player.created_at)}
 				</div>
 			</a>
 		{/each}
@@ -221,16 +210,16 @@
 		</div>
 	{:else}
 	<div class="overflow-x-auto rounded-xl bg-surface shadow-md">
-		<table class="w-full text-left">
+		<table class="w-full text-left text-sm">
 			<thead>
 				<tr class="border-b border-surface-700">
-					<th class="p-3 font-semibold text-surface-300">Место</th>
-					<th class="p-3 font-semibold text-surface-300">Игрок</th>
-					<th class="p-3 font-semibold text-surface-300">Текущая игра</th>
-					<th class="p-3 font-semibold text-surface-300 text-right">Очки</th>
-					<th class="p-3 font-semibold text-surface-300 text-right">Пройдено</th>
-					<th class="p-3 font-semibold text-surface-300 text-right">Дроп</th>
-					<th class="p-3 font-semibold text-surface-300 text-right">Реролл</th>
+					<th class="p-3 font-semibold text-surface-300 align-middle">Место</th>
+					<th class="p-3 font-semibold text-surface-300 align-middle">Игрок</th>
+					<th class="p-3 font-semibold text-surface-300 align-middle">Текущая игра</th>
+					<th class="px-4 py-3 font-semibold text-surface-300 text-center align-middle">Очки</th>
+					<th class="px-4 py-3 font-semibold text-surface-300 text-center align-middle">Пройдено</th>
+					<th class="px-4 py-3 font-semibold text-surface-300 text-center align-middle">Дроп</th>
+					<th class="px-4 py-3 font-semibold text-surface-300 text-center align-middle">Реролл</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -238,18 +227,28 @@
 					<tr
 						class="border-b border-surface-800 hover:bg-surface-800/50 transition"
 					>
-						<td class="p-3">
-							<div
-								class="w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold"
-								style={`
-									background: ${placeStyles[index]?.bg ?? "transparent"};
-									color: ${placeStyles[index]?.color ?? getPlayerColor(row.player.username)};
-								`}
-							>
-								{placeStyles[index]?.label ?? index + 1}
-							</div>
+						<td class="p-4 pr-3 align-middle">
+							{#if row.player.img}
+								<img
+									src={row.player.img}
+									alt={row.player.username}
+									class="w-16 h-16 rounded-full object-cover"
+									loading="lazy"
+									referrerpolicy="no-referrer"
+								/>
+							{:else}
+								<div
+									class="w-16 h-16 flex items-center justify-center rounded-full text-sm font-bold"
+									style={`
+										background: ${placeStyles[index]?.bg ?? "transparent"};
+										color: ${placeStyles[index]?.color ?? getPlayerColor(row.player.username)};
+									`}
+								>
+									{placeStyles[index]?.label ?? index + 1}
+								</div>
+							{/if}
 						</td>
-						<td class="p-3">
+						<td class="p-2 pl-3 align-middle">
 							<a
 								href={`/users/${row.player.id}`}
 								class="font-semibold hover:underline"
@@ -257,17 +256,19 @@
 							>
 								{row.player.username}
 							</a>
-							{#if row.player.email}
-								<p class="text-sm text-surface-400">{row.player.email}</p>
+							{#if row.player.description}
+								<p class="text-sm text-surface-400 max-w-xs truncate whitespace-nowrap">
+									{row.player.description}
+								</p>
 							{/if}
 						</td>
-						<td class="p-3 text-surface-300">
+						<td class="p-3 text-surface-300 align-middle">
 							{row.currentGame ?? "—"}
 						</td>
-						<td class="p-3 text-right font-medium">{row.points}</td>
-						<td class="p-3 text-right">{row.completed}</td>
-						<td class="p-3 text-right">{row.dropped}</td>
-						<td class="p-3 text-right">{row.rerolled}</td>
+						<td class="px-4 py-3 text-center font-medium align-middle">{row.points}</td>
+						<td class="px-4 py-3 text-center align-middle">{row.completed}</td>
+						<td class="px-4 py-3 text-center align-middle">{row.dropped}</td>
+						<td class="px-4 py-3 text-center align-middle">{row.rerolled}</td>
 					</tr>
 				{/each}
 			</tbody>

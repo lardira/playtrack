@@ -13,6 +13,11 @@
     import ChangePasswordModal from "../../../lib/components/ChangePasswordModal.svelte";
     import EditDescriptionModal from "../../../lib/components/EditDescriptionModal.svelte";
     import EditPlayedGameModal from "../../../lib/components/EditPlayedGameModal.svelte";
+    import { getPlayerColor } from "../../../lib/colorUtils";
+    import { PlayedGameStatus, PLAYED_GAME_STATUS_META } from "../../../lib/playedGameStatus";
+    import { computeProfileStats, hasNonTerminatedGame } from "../../../helpers/playedGameStatus";
+    import { formatDisplayDate, formatLocaleDate } from "../../../helpers/dateTime";
+    import { createLoadGuard } from "../../../helpers/loadGuard";
 
     let player: Player | null = null;
     let loading = true;
@@ -29,70 +34,52 @@
     $: gamesMap = Object.fromEntries(allGames.map((g) => [g.id, g])) as Record<number, Game>;
     $: gameTitle = (gameId: number) => gamesMap[gameId]?.title ?? `ID: ${gameId}`;
 
-    function getPlayerColor(username: string): string {
-        const colors = [
-            "#f97316",
-            "#22c55e",
-            "#3b82f6",
-            "#a855f7",
-            "#ec4899",
-            "#14b8a6",
-        ];
-        const hash = username
-            .split("")
-            .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        return colors[hash % colors.length];
-    }
-
-    const STATUS_META: Record<string, { label: string; color: string }> = {
-        completed: { label: "Пройдено", color: "#22c55e" },
-        dropped: { label: "Дроп", color: "#ef4444" },
-        rerolled: { label: "Реролл", color: "#38bdf8" },
-        in_progress: { label: "В процессе", color: "#facc15" },
-        added: { label: "Добавлено", color: "#94a3b8" },
-    };
-
     $: id = $page.params.id;
 
-    $: if (id) {
+    const profileLoad = createLoadGuard();
+    let loadedProfileId: string | null = null;
+
+    async function loadProfile(profileId: string) {
+        const gen = profileLoad.next();
         loading = true;
-        const requestedId = id;
-        Promise.all([getPlayer(id), getPlayerPlayedGames(id), getGames()])
-            .then(([p, games, gamesList]) => {
-                if ($page.params.id === requestedId) {
-                    player = p;
-                    playedGames = games ?? [];
-                    allGames = gamesList ?? [];
-                }
-            })
-            .catch(() => {
-                if ($page.params.id === requestedId) {
-                    player = null;
-                    playedGames = [];
-                    allGames = [];
-                }
-            })
-            .finally(() => {
-                if ($page.params.id === requestedId) loading = false;
-            });
-    } else {
+        try {
+            const [p, games, gamesList] = await Promise.all([
+                getPlayer(profileId),
+                getPlayerPlayedGames(profileId),
+                getGames(),
+            ]);
+            if (!profileLoad.isCurrent(gen) || $page.params.id !== profileId) return;
+            player = p;
+            playedGames = games ?? [];
+            allGames = gamesList ?? [];
+        } catch {
+            if (!profileLoad.isCurrent(gen) || $page.params.id !== profileId) return;
+            player = null;
+            playedGames = [];
+            allGames = [];
+        } finally {
+            if (profileLoad.isCurrent(gen) && $page.params.id === profileId) {
+                loading = false;
+            }
+        }
+    }
+
+    $: if (!id) {
+        profileLoad.cancel();
+        loadedProfileId = null;
         player = null;
         playedGames = [];
         allGames = [];
         loading = false;
+    } else if (id !== loadedProfileId) {
+        loadedProfileId = id;
+        void loadProfile(id);
     }
 
     $: playerColor = player ? getPlayerColor(player.username) : "#f97316";
     $: isOwnProfile = !!currentUser && !!player && currentUser.id === player.id;
 
-    $: totalGames = playedGames.length;
-    $: totalPoints = playedGames.reduce((sum, pg) => sum + pg.points, 0);
-    $: gamesExcludingReroll = playedGames.filter((pg) => pg.status !== "rerolled");
-    $: completedCount = playedGames.filter((pg) => pg.status === "completed").length;
-    $: completedPercent =
-        gamesExcludingReroll.length > 0
-            ? Math.round((completedCount / gamesExcludingReroll.length) * 100)
-            : 0;
+    $: ({ totalGames, totalPoints, completedPercent } = computeProfileStats(playedGames));
 
     function formatPlayTime(duration: string | null): string {
         if (!duration) return "0h";
@@ -112,14 +99,6 @@
             return `${minutes}m`;
         }
         return "0h";
-    }
-
-    function formatDate(dateString: string): string {
-        const date = new Date(dateString);
-        const day = date.getDate().toString().padStart(2, "0");
-        const month = (date.getMonth() + 1).toString().padStart(2, "0");
-        const year = date.getFullYear();
-        return `${day}/${month}/${year}`;
     }
 
     function handleEditPlayedGame(playedGame: PlayedGame) {
@@ -149,7 +128,12 @@
     let gameDropdownOpen = false;
     let gameDropdownBlurTimeout: ReturnType<typeof setTimeout> | null = null;
 
-    $: searchQuery = newRecordTitle.trim().toLowerCase();
+    function normalizeTitle(value: string): string {
+        return value.trim().replace(/\s+/g, " ");
+    }
+
+    $: normalizedTitle = normalizeTitle(newRecordTitle);
+    $: searchQuery = normalizedTitle.toLowerCase();
     $: searchResults =
         searchQuery.length < 2
             ? []
@@ -195,22 +179,18 @@
         newRecordUrl = game.url ?? "";
     }
 
-    const NONTERMINATED_STATUSES = ["added", "in_progress"];
-
     async function submitNewRecord() {
         if (!player || player.id !== currentUser?.id) return;
-        const title = newRecordTitle.trim();
+        const title = normalizeTitle(newRecordTitle);
+        newRecordTitle = title;
         if (!title) {
             createError = "Введите название игры";
             return;
         }
 
-        const hasNonTerminated = playedGames.some((pg) =>
-            NONTERMINATED_STATUSES.includes(pg.status),
-        );
-        if (hasNonTerminated) {
+        if (hasNonTerminatedGame(playedGames)) {
             createError =
-                "Сначала завершите текущую игру (Пройдено / Дроп / Реролл) или измените её статус в карточке выше.";
+                "Сначала завершите текущую игру или измените её статус в карточке (Пройдено / Дроп / Реролл).";
             return;
         }
 
@@ -219,7 +199,11 @@
 
         try {
             let gameId: number;
-            if (selectedGame) {
+            const selectedTitle = selectedGame ? normalizeTitle(selectedGame.title) : null;
+            const useExistingGame =
+                !!selectedGame && !!selectedTitle && selectedTitle.toLowerCase() === title.toLowerCase();
+
+            if (useExistingGame && selectedGame) {
                 gameId = selectedGame.id;
             } else {
                 const { id } = await createGame({
@@ -231,7 +215,9 @@
             }
 
             const { id: playedGameId } = await createPlayedGame(player.id, gameId);
-            await updatePlayedGame(player.id, playedGameId, { status: "in_progress" });
+            await updatePlayedGame(player.id, playedGameId, {
+                status: PlayedGameStatus.InProgress,
+            });
 
             const [updatedPlayed, updatedGames] = await Promise.all([
                 getPlayerPlayedGames(player.id),
@@ -326,7 +312,7 @@
             <div class="text-right flex-shrink-0">
                 <p class="text-sm text-surface-400">Зарегистрирован</p>
                 <p class="text-lg font-bold">
-                    {new Date(player.created_at).toLocaleDateString()}
+                    {formatLocaleDate(player.created_at)}
                 </p>
             </div>
         </div>
@@ -477,7 +463,7 @@
                 {@const isExpanded = expandedPlayedId === playedGame.id}
                 <div
                     class="group rounded-xl p-5 bg-surface shadow-md transition hover:shadow-xl"
-                    style={`border-left: 6px solid ${STATUS_META[playedGame.status].color}`}
+                    style={`border-left: 6px solid ${PLAYED_GAME_STATUS_META[playedGame.status].color}`}
                 >
                     <div
                         class="flex flex-col md:flex-row md:items-center gap-4"
@@ -496,8 +482,8 @@
                                 <p class="text-lg font-semibold truncate">
                                     {gameTitle(playedGame.game_id)}
                                 </p>
-                                <p class="text-sm text-surface-400">
-                                    {STATUS_META[playedGame.status].label}
+                                <p class="text-sm text-surface-400 min-w-0 truncate">
+                                    {isExpanded ? PLAYED_GAME_STATUS_META[playedGame.status].label : (playedGame.comment?.trim() || PLAYED_GAME_STATUS_META[playedGame.status].label)}
                                 </p>
                             </div>
                         </button>
@@ -507,7 +493,7 @@
                             <span>Очки: <strong style={`color:${playerColor}`}>{playedGame.points}</strong></span>
                             <span>Игра: {playedGame.play_time ? formatPlayTime(playedGame.play_time) : "0"}</span>
                             <span>Рейтинг: {playedGame.rating != null ? `${playedGame.rating}/100` : "—"}</span>
-                            <span>Старт: {formatDate(playedGame.started_at)}</span>
+                            <span>Старт: {formatDisplayDate(playedGame.started_at)}</span>
                         </div>
 
                         <!-- ACTION -->
@@ -533,7 +519,7 @@
                                     <p class="font-bold" style={`color:${playerColor}`}>{playedGame.points}</p>
                                 </div>
                                 <div>
-                                    <span class="text-surface-400">Время игры (play_time)</span>
+                                    <span class="text-surface-400">Время игры</span>
                                     <p class="font-bold">{playedGame.play_time ? formatPlayTime(playedGame.play_time) : "0"}</p>
                                 </div>
                                 <div>
@@ -541,13 +527,13 @@
                                     <p class="font-bold">{playedGame.rating != null ? `${playedGame.rating}/100` : "—"}</p>
                                 </div>
                                 <div>
-                                    <span class="text-surface-400">Дата старта (started_at)</span>
-                                    <p class="font-bold">{formatDate(playedGame.started_at)}</p>
+                                    <span class="text-surface-400">Дата старта</span>
+                                    <p class="font-bold">{formatDisplayDate(playedGame.started_at)}</p>
                                 </div>
                                 {#if playedGame.completed_at}
                                     <div>
                                         <span class="text-surface-400">Дата завершения</span>
-                                        <p class="font-bold">{formatDate(playedGame.completed_at)}</p>
+                                        <p class="font-bold">{formatDisplayDate(playedGame.completed_at)}</p>
                                     </div>
                                 {/if}
                             </div>

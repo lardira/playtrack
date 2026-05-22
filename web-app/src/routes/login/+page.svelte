@@ -2,6 +2,7 @@
     import { goto } from "$app/navigation";
     import { tick } from "svelte";
     import { login, register } from "../../lib/api";
+    import { get } from "svelte/store";
     import { user, token, loadUserFromToken } from "../../stores/user";
     import { setTokenCookie } from "../../lib/cookies";
     import { onMount } from "svelte";
@@ -19,12 +20,20 @@
     let registerEmail = "";
     let registerImg = "";
 
+    function redirectIfAuthenticated() {
+        if (get(token) && get(user)) {
+            goto("/");
+        }
+    }
+
     onMount(() => {
-        user.subscribe((u) => {
-            if (u) {
-                goto("/");
-            }
-        });
+        redirectIfAuthenticated();
+        const unsubUser = user.subscribe(() => redirectIfAuthenticated());
+        const unsubToken = token.subscribe(() => redirectIfAuthenticated());
+        return () => {
+            unsubUser();
+            unsubToken();
+        };
     });
 
     async function handleLogin() {

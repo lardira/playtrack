@@ -17,7 +17,7 @@
 <nav
     class="sticky top-0 z-50 bg-surface-900 border-b border-surface-700 backdrop-blur px-4 py-2 flex justify-between items-center"
 >
-    <a href="/" class="text-2xl font-bold text-primary-400">🎮 GameTracker</a>
+    <a href="/" class="text-2xl font-bold text-primary-400">🎮 PlayTrack</a>
     {#if currentUser}
         <div class="flex items-center space-x-4">
             <a

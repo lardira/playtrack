@@ -1,3 +1,7 @@
+import { PlayedGameStatus } from './playedGameStatus';
+
+export { PlayedGameStatus };
+
 export interface Player {
     id: string; // UUID
     username: string;
@@ -50,10 +54,3 @@ export interface AuthResponse {
     token?: string;
     player?: Player;
 }
-
-export type PlayedGameStatus =
-    | "added"
-    | "in_progress"
-    | "completed"
-    | "dropped"
-    | "rerolled";

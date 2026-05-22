@@ -1,7 +1,17 @@
 <script lang="ts">
     import Modal from './Modal.svelte';
     import { updatePlayedGame } from '../api';
-    import type { PlayedGame, PlayedGameStatus } from '../types';
+    import type { PlayedGame } from '../types';
+    import { PlayedGameStatus, EDIT_STATUS_OPTIONS } from '../playedGameStatus';
+    import { isActiveStatus } from '../../helpers/playedGameStatus';
+    import {
+        splitIsoDateTime,
+        DEFAULT_START_TIME,
+        DEFAULT_COMPLETED_TIME,
+        toUtcIsoString,
+        isValidUtcDateTime,
+        isCompletedAfterStart,
+    } from '../../helpers/dateTime';
 
     export let isOpen = false;
     export let onClose: () => void = () => {};
@@ -11,36 +21,28 @@
     export let onSaved: () => void = () => {};
 
     let comment = '';
+    let startedAt = '';
+    let startedTime = '';
     let completedAt = '';
+    let completedTime = '';
     let playTimeHours = 0;
     let playTimeMinutes = 0;
     let points = 0;
     let rating: number | '' = '';
-    let status: PlayedGameStatus = 'in_progress';
+    let status: PlayedGameStatus = PlayedGameStatus.InProgress;
     let loading = false;
     let error = '';
     let lastOpenedId: number | null = null;
 
-    const STATUS_OPTIONS: { value: PlayedGameStatus; label: string }[] = [
-        { value: 'added', label: 'Добавлено' },
-        { value: 'in_progress', label: 'В процессе' },
-        { value: 'completed', label: 'Пройдено' },
-        { value: 'dropped', label: 'Дроп' },
-        { value: 'rerolled', label: 'Реролл' },
-    ];
-
-    function parseCompletedAtDate(iso: string | null): string {
-        if (!iso) {
-            const today = new Date();
-            return today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-        }
-        return iso.slice(0, 10);
-    }
-
     $: if (isOpen && playedGame && playedGame.id !== lastOpenedId) {
         lastOpenedId = playedGame.id;
         comment = playedGame.comment ?? '';
-        completedAt = parseCompletedAtDate(playedGame.completed_at);
+        const started = splitIsoDateTime(playedGame.started_at);
+        startedAt = started.date;
+        startedTime = started.time;
+        const completed = splitIsoDateTime(playedGame.completed_at);
+        completedAt = completed.date;
+        completedTime = completed.time;
         points = playedGame.points;
         rating = playedGame.rating ?? '';
         status = playedGame.status;
@@ -74,13 +76,39 @@
             return;
         }
 
+        const terminated = !isActiveStatus(status);
+
+        if (terminated) {
+            if (!startedAt) {
+                error = 'Укажите дату начала';
+                return;
+            }
+            if (!completedAt) {
+                error = 'Укажите дату завершения';
+                return;
+            }
+            if (!isValidUtcDateTime(startedAt, startedTime, DEFAULT_START_TIME)) {
+                error = 'Некорректная дата начала';
+                return;
+            }
+            if (!isValidUtcDateTime(completedAt, completedTime, DEFAULT_COMPLETED_TIME)) {
+                error = 'Некорректная дата завершения';
+                return;
+            }
+            if (!isCompletedAfterStart(startedAt, startedTime, completedAt, completedTime)) {
+                error = 'Дата завершения должна быть позже даты начала';
+                return;
+            }
+        }
+
         loading = true;
         error = '';
 
         try {
             const payload: Parameters<typeof updatePlayedGame>[2] = {
                 comment: comment.trim() || null,
-                completed_at: completedAt ? `${completedAt}T00:00:00Z` : null,
+                started_at: startedAt ? toUtcIsoString(startedAt, startedTime, DEFAULT_START_TIME) : null,
+                completed_at: terminated && completedAt ? toUtcIsoString(completedAt, completedTime, DEFAULT_COMPLETED_TIME) : null,
                 play_time: buildPlayTime(),
                 rating: ratingNum,
             };
@@ -126,7 +154,7 @@
                 <div class="space-y-1.5 pr-6 border-r-2 border-surface-600">
                     <label for="edit-status" class="block text-sm font-medium text-surface-300">Статус</label>
                     <select id="edit-status" class="input w-full px-3 py-2.5 rounded-lg border border-surface-600 bg-surface-800 focus:border-primary-500 focus:outline-none min-h-[2.75rem]" bind:value={status} disabled={loading}>
-                        {#each STATUS_OPTIONS as opt}
+                        {#each EDIT_STATUS_OPTIONS as opt}
                             <option value={opt.value}>{opt.label}</option>
                         {/each}
                     </select>
@@ -175,16 +203,47 @@
                 </div>
             </div>
 
-            {#if status === 'completed' || status === 'dropped'}
-                <div class="space-y-1.5">
-                    <label for="edit-completed-at" class="block text-sm font-medium text-surface-300">Дата завершения (completed_at)</label>
+            <div class="space-y-1.5">
+                <label for="edit-started-at" class="block text-sm font-medium text-surface-300">Дата старта</label>
+                <div class="grid grid-cols-2 gap-3">
                     <input
-                        id="edit-completed-at"
+                        id="edit-started-at"
                         type="date"
                         class="input w-full px-3 py-2.5 rounded-lg border border-surface-600 bg-surface-800 focus:border-primary-500 focus:outline-none min-h-[2.75rem]"
-                        bind:value={completedAt}
+                        bind:value={startedAt}
                         disabled={loading}
                     />
+                    <input
+                        id="edit-started-time"
+                        type="time"
+                        step="1"
+                        class="input w-full px-3 py-2.5 rounded-lg border border-surface-600 bg-surface-800 focus:border-primary-500 focus:outline-none min-h-[2.75rem]"
+                        bind:value={startedTime}
+                        disabled={loading}
+                    />
+                </div>
+            </div>
+
+            {#if !isActiveStatus(status)}
+                <div class="space-y-1.5">
+                    <label for="edit-completed-at" class="block text-sm font-medium text-surface-300">Дата завершения</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input
+                            id="edit-completed-at"
+                            type="date"
+                            class="input w-full px-3 py-2.5 rounded-lg border border-surface-600 bg-surface-800 focus:border-primary-500 focus:outline-none min-h-[2.75rem]"
+                            bind:value={completedAt}
+                            disabled={loading}
+                        />
+                        <input
+                            id="edit-completed-time"
+                            type="time"
+                            step="1"
+                            class="input w-full px-3 py-2.5 rounded-lg border border-surface-600 bg-surface-800 focus:border-primary-500 focus:outline-none min-h-[2.75rem]"
+                            bind:value={completedTime}
+                            disabled={loading}
+                        />
+                    </div>
                 </div>
             {/if}
 
