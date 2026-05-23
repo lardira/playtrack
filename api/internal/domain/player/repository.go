@@ -120,27 +120,22 @@ func (r *PGRepository) Insert(ctx context.Context, player *Player) (string, erro
 	return id, nil
 }
 
-func (r *PGRepository) Update(ctx context.Context, player *PlayerUpdate) (string, error) {
+func (r *PGRepository) Update(ctx context.Context, player *Player) (string, error) {
 	var id string
-	updBuild := sq.Update(TablePlayer).PlaceholderFormat(sq.Dollar)
 
-	if player.Email != nil {
-		updBuild = updBuild.Set("email", *player.Email)
-	}
-	if player.Img != nil {
-		updBuild = updBuild.Set("img", *player.Img)
-	}
-	if player.Username != nil {
-		updBuild = updBuild.Set("username", *player.Username)
-	}
-	if player.Password != nil {
-		updBuild = updBuild.Set("password", *player.Password)
-	}
-	if player.Description != nil {
-		updBuild = updBuild.Set("description", *player.Description)
-	}
+	updBuild := sq.Update(TablePlayer).
+		PlaceholderFormat(sq.Dollar).
+		SetMap(map[string]interface{}{
+			"email":       player.Email,
+			"img":         player.Img,
+			"username":    player.Username,
+			"password":    player.Password,
+			"description": player.Description,
+		}).
+		Where(sq.Eq{"id": player.ID}).
+		Suffix("RETURNING id")
 
-	query, args, err := updBuild.Where(sq.Eq{"id": player.ID}).Suffix("RETURNING id").ToSql()
+	query, args, err := updBuild.ToSql()
 	if err != nil {
 		return id, err
 	}

@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 	"testing"
 	"time"
@@ -18,29 +17,6 @@ import (
 const (
 	testSecret = "test"
 )
-
-type TestHumaContext interface {
-	huma.Context
-}
-
-type testCtx struct {
-	TestHumaContext
-
-	onSetStatus func(int)
-	onHeader    func() string
-}
-
-func (t testCtx) Header(_ string) string {
-	return t.onHeader()
-}
-
-func (t testCtx) SetStatus(code int) {
-	t.onSetStatus(code)
-}
-
-func (t testCtx) Context() context.Context {
-	return context.Background()
-}
 
 func TestAuthMiddleware(t *testing.T) {
 	playerID := uuid.NewString()
@@ -66,11 +42,7 @@ func TestAuthMiddleware(t *testing.T) {
 		},
 	}
 	authFunc(ctx, func(ctx huma.Context) {
-		authCtx, ok := ctx.(*authContext)
-		assert.True(t, ok)
-		assert.NotZero(t, authCtx)
-
-		ctxP, ok := ctxutil.GetPlayer(authCtx.Context())
+		ctxP, ok := ctxutil.GetPlayer(ctx.Context())
 		assert.True(t, ok)
 		assert.Equal(t, playerID, ctxP.ID)
 	})
@@ -101,11 +73,7 @@ func TestAuthMiddleware_Admin(t *testing.T) {
 		},
 	}
 	authFunc(ctx, func(ctx huma.Context) {
-		authCtx, ok := ctx.(*authContext)
-		assert.True(t, ok)
-		assert.NotZero(t, authCtx)
-
-		ctxP, ok := ctxutil.GetPlayer(authCtx.Context())
+		ctxP, ok := ctxutil.GetPlayer(ctx.Context())
 		assert.True(t, ok)
 		assert.Equal(t, playerID, ctxP.ID)
 		assert.True(t, ctxP.IsAdmin)
@@ -147,11 +115,7 @@ func TestAuthMiddleware_InvalidHeader(t *testing.T) {
 			}
 
 			authFunc(ctx, func(ctx huma.Context) {
-				authCtx, ok := ctx.(*authContext)
-				assert.True(t, ok)
-				assert.NotZero(t, authCtx)
-
-				_, ok = ctxutil.GetPlayer(authCtx.Context())
+				_, ok := ctxutil.GetPlayer(ctx.Context())
 				assert.False(t, ok)
 			})
 		})

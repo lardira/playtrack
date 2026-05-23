@@ -168,6 +168,74 @@ func (_c *MockPlayerRepository_FindOne_Call) RunAndReturn(run func(ctx context.C
 	return _c
 }
 
+// FindOneByUsername provides a mock function for the type MockPlayerRepository
+func (_mock *MockPlayerRepository) FindOneByUsername(ctx context.Context, username string) (*Player, error) {
+	ret := _mock.Called(ctx, username)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindOneByUsername")
+	}
+
+	var r0 *Player
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (*Player, error)); ok {
+		return returnFunc(ctx, username)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) *Player); ok {
+		r0 = returnFunc(ctx, username)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*Player)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, username)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockPlayerRepository_FindOneByUsername_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindOneByUsername'
+type MockPlayerRepository_FindOneByUsername_Call struct {
+	*mock.Call
+}
+
+// FindOneByUsername is a helper method to define mock.On call
+//   - ctx context.Context
+//   - username string
+func (_e *MockPlayerRepository_Expecter) FindOneByUsername(ctx interface{}, username interface{}) *MockPlayerRepository_FindOneByUsername_Call {
+	return &MockPlayerRepository_FindOneByUsername_Call{Call: _e.mock.On("FindOneByUsername", ctx, username)}
+}
+
+func (_c *MockPlayerRepository_FindOneByUsername_Call) Run(run func(ctx context.Context, username string)) *MockPlayerRepository_FindOneByUsername_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockPlayerRepository_FindOneByUsername_Call) Return(player *Player, err error) *MockPlayerRepository_FindOneByUsername_Call {
+	_c.Call.Return(player, err)
+	return _c
+}
+
+func (_c *MockPlayerRepository_FindOneByUsername_Call) RunAndReturn(run func(ctx context.Context, username string) (*Player, error)) *MockPlayerRepository_FindOneByUsername_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Insert provides a mock function for the type MockPlayerRepository
 func (_mock *MockPlayerRepository) Insert(context1 context.Context, player *Player) (string, error) {
 	ret := _mock.Called(context1, player)
@@ -235,7 +303,7 @@ func (_c *MockPlayerRepository_Insert_Call) RunAndReturn(run func(context1 conte
 }
 
 // Update provides a mock function for the type MockPlayerRepository
-func (_mock *MockPlayerRepository) Update(ctx context.Context, player *PlayerUpdate) (string, error) {
+func (_mock *MockPlayerRepository) Update(ctx context.Context, player *Player) (string, error) {
 	ret := _mock.Called(ctx, player)
 
 	if len(ret) == 0 {
@@ -244,15 +312,15 @@ func (_mock *MockPlayerRepository) Update(ctx context.Context, player *PlayerUpd
 
 	var r0 string
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *PlayerUpdate) (string, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *Player) (string, error)); ok {
 		return returnFunc(ctx, player)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *PlayerUpdate) string); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *Player) string); ok {
 		r0 = returnFunc(ctx, player)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *PlayerUpdate) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *Player) error); ok {
 		r1 = returnFunc(ctx, player)
 	} else {
 		r1 = ret.Error(1)
@@ -267,20 +335,20 @@ type MockPlayerRepository_Update_Call struct {
 
 // Update is a helper method to define mock.On call
 //   - ctx context.Context
-//   - player *PlayerUpdate
+//   - player *Player
 func (_e *MockPlayerRepository_Expecter) Update(ctx interface{}, player interface{}) *MockPlayerRepository_Update_Call {
 	return &MockPlayerRepository_Update_Call{Call: _e.mock.On("Update", ctx, player)}
 }
 
-func (_c *MockPlayerRepository_Update_Call) Run(run func(ctx context.Context, player *PlayerUpdate)) *MockPlayerRepository_Update_Call {
+func (_c *MockPlayerRepository_Update_Call) Run(run func(ctx context.Context, player *Player)) *MockPlayerRepository_Update_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *PlayerUpdate
+		var arg1 *Player
 		if args[1] != nil {
-			arg1 = args[1].(*PlayerUpdate)
+			arg1 = args[1].(*Player)
 		}
 		run(
 			arg0,
@@ -295,7 +363,7 @@ func (_c *MockPlayerRepository_Update_Call) Return(s string, err error) *MockPla
 	return _c
 }
 
-func (_c *MockPlayerRepository_Update_Call) RunAndReturn(run func(ctx context.Context, player *PlayerUpdate) (string, error)) *MockPlayerRepository_Update_Call {
+func (_c *MockPlayerRepository_Update_Call) RunAndReturn(run func(ctx context.Context, player *Player) (string, error)) *MockPlayerRepository_Update_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -464,8 +532,8 @@ func (_c *MockPlayedGameRepository_FindLastNotReroll_Call) RunAndReturn(run func
 }
 
 // FindOne provides a mock function for the type MockPlayedGameRepository
-func (_mock *MockPlayedGameRepository) FindOne(ctx context.Context, playerID string, id int) (*PlayedGame, error) {
-	ret := _mock.Called(ctx, playerID, id)
+func (_mock *MockPlayedGameRepository) FindOne(ctx context.Context, id int) (*PlayedGame, error) {
+	ret := _mock.Called(ctx, id)
 
 	if len(ret) == 0 {
 		panic("no return value specified for FindOne")
@@ -473,18 +541,18 @@ func (_mock *MockPlayedGameRepository) FindOne(ctx context.Context, playerID str
 
 	var r0 *PlayedGame
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, int) (*PlayedGame, error)); ok {
-		return returnFunc(ctx, playerID, id)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int) (*PlayedGame, error)); ok {
+		return returnFunc(ctx, id)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, int) *PlayedGame); ok {
-		r0 = returnFunc(ctx, playerID, id)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int) *PlayedGame); ok {
+		r0 = returnFunc(ctx, id)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*PlayedGame)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, int) error); ok {
-		r1 = returnFunc(ctx, playerID, id)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, int) error); ok {
+		r1 = returnFunc(ctx, id)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -498,30 +566,24 @@ type MockPlayedGameRepository_FindOne_Call struct {
 
 // FindOne is a helper method to define mock.On call
 //   - ctx context.Context
-//   - playerID string
 //   - id int
-func (_e *MockPlayedGameRepository_Expecter) FindOne(ctx interface{}, playerID interface{}, id interface{}) *MockPlayedGameRepository_FindOne_Call {
-	return &MockPlayedGameRepository_FindOne_Call{Call: _e.mock.On("FindOne", ctx, playerID, id)}
+func (_e *MockPlayedGameRepository_Expecter) FindOne(ctx interface{}, id interface{}) *MockPlayedGameRepository_FindOne_Call {
+	return &MockPlayedGameRepository_FindOne_Call{Call: _e.mock.On("FindOne", ctx, id)}
 }
 
-func (_c *MockPlayedGameRepository_FindOne_Call) Run(run func(ctx context.Context, playerID string, id int)) *MockPlayedGameRepository_FindOne_Call {
+func (_c *MockPlayedGameRepository_FindOne_Call) Run(run func(ctx context.Context, id int)) *MockPlayedGameRepository_FindOne_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 string
+		var arg1 int
 		if args[1] != nil {
-			arg1 = args[1].(string)
-		}
-		var arg2 int
-		if args[2] != nil {
-			arg2 = args[2].(int)
+			arg1 = args[1].(int)
 		}
 		run(
 			arg0,
 			arg1,
-			arg2,
 		)
 	})
 	return _c
@@ -532,14 +594,14 @@ func (_c *MockPlayedGameRepository_FindOne_Call) Return(playedGame *PlayedGame, 
 	return _c
 }
 
-func (_c *MockPlayedGameRepository_FindOne_Call) RunAndReturn(run func(ctx context.Context, playerID string, id int) (*PlayedGame, error)) *MockPlayedGameRepository_FindOne_Call {
+func (_c *MockPlayedGameRepository_FindOne_Call) RunAndReturn(run func(ctx context.Context, id int) (*PlayedGame, error)) *MockPlayedGameRepository_FindOne_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Insert provides a mock function for the type MockPlayedGameRepository
-func (_mock *MockPlayedGameRepository) Insert(ctx context.Context, player *PlayedGame) (int, error) {
-	ret := _mock.Called(ctx, player)
+func (_mock *MockPlayedGameRepository) Insert(ctx context.Context, game *PlayedGame) (int, error) {
+	ret := _mock.Called(ctx, game)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Insert")
@@ -548,15 +610,15 @@ func (_mock *MockPlayedGameRepository) Insert(ctx context.Context, player *Playe
 	var r0 int
 	var r1 error
 	if returnFunc, ok := ret.Get(0).(func(context.Context, *PlayedGame) (int, error)); ok {
-		return returnFunc(ctx, player)
+		return returnFunc(ctx, game)
 	}
 	if returnFunc, ok := ret.Get(0).(func(context.Context, *PlayedGame) int); ok {
-		r0 = returnFunc(ctx, player)
+		r0 = returnFunc(ctx, game)
 	} else {
 		r0 = ret.Get(0).(int)
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, *PlayedGame) error); ok {
-		r1 = returnFunc(ctx, player)
+		r1 = returnFunc(ctx, game)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -570,12 +632,12 @@ type MockPlayedGameRepository_Insert_Call struct {
 
 // Insert is a helper method to define mock.On call
 //   - ctx context.Context
-//   - player *PlayedGame
-func (_e *MockPlayedGameRepository_Expecter) Insert(ctx interface{}, player interface{}) *MockPlayedGameRepository_Insert_Call {
-	return &MockPlayedGameRepository_Insert_Call{Call: _e.mock.On("Insert", ctx, player)}
+//   - game *PlayedGame
+func (_e *MockPlayedGameRepository_Expecter) Insert(ctx interface{}, game interface{}) *MockPlayedGameRepository_Insert_Call {
+	return &MockPlayedGameRepository_Insert_Call{Call: _e.mock.On("Insert", ctx, game)}
 }
 
-func (_c *MockPlayedGameRepository_Insert_Call) Run(run func(ctx context.Context, player *PlayedGame)) *MockPlayedGameRepository_Insert_Call {
+func (_c *MockPlayedGameRepository_Insert_Call) Run(run func(ctx context.Context, game *PlayedGame)) *MockPlayedGameRepository_Insert_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -598,13 +660,13 @@ func (_c *MockPlayedGameRepository_Insert_Call) Return(n int, err error) *MockPl
 	return _c
 }
 
-func (_c *MockPlayedGameRepository_Insert_Call) RunAndReturn(run func(ctx context.Context, player *PlayedGame) (int, error)) *MockPlayedGameRepository_Insert_Call {
+func (_c *MockPlayedGameRepository_Insert_Call) RunAndReturn(run func(ctx context.Context, game *PlayedGame) (int, error)) *MockPlayedGameRepository_Insert_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Update provides a mock function for the type MockPlayedGameRepository
-func (_mock *MockPlayedGameRepository) Update(ctx context.Context, game *PlayedGameUpdate) (int, error) {
+func (_mock *MockPlayedGameRepository) Update(ctx context.Context, game *PlayedGame) (int, error) {
 	ret := _mock.Called(ctx, game)
 
 	if len(ret) == 0 {
@@ -613,15 +675,15 @@ func (_mock *MockPlayedGameRepository) Update(ctx context.Context, game *PlayedG
 
 	var r0 int
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *PlayedGameUpdate) (int, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *PlayedGame) (int, error)); ok {
 		return returnFunc(ctx, game)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *PlayedGameUpdate) int); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *PlayedGame) int); ok {
 		r0 = returnFunc(ctx, game)
 	} else {
 		r0 = ret.Get(0).(int)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *PlayedGameUpdate) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *PlayedGame) error); ok {
 		r1 = returnFunc(ctx, game)
 	} else {
 		r1 = ret.Error(1)
@@ -636,20 +698,20 @@ type MockPlayedGameRepository_Update_Call struct {
 
 // Update is a helper method to define mock.On call
 //   - ctx context.Context
-//   - game *PlayedGameUpdate
+//   - game *PlayedGame
 func (_e *MockPlayedGameRepository_Expecter) Update(ctx interface{}, game interface{}) *MockPlayedGameRepository_Update_Call {
 	return &MockPlayedGameRepository_Update_Call{Call: _e.mock.On("Update", ctx, game)}
 }
 
-func (_c *MockPlayedGameRepository_Update_Call) Run(run func(ctx context.Context, game *PlayedGameUpdate)) *MockPlayedGameRepository_Update_Call {
+func (_c *MockPlayedGameRepository_Update_Call) Run(run func(ctx context.Context, game *PlayedGame)) *MockPlayedGameRepository_Update_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *PlayedGameUpdate
+		var arg1 *PlayedGame
 		if args[1] != nil {
-			arg1 = args[1].(*PlayedGameUpdate)
+			arg1 = args[1].(*PlayedGame)
 		}
 		run(
 			arg0,
@@ -664,18 +726,18 @@ func (_c *MockPlayedGameRepository_Update_Call) Return(n int, err error) *MockPl
 	return _c
 }
 
-func (_c *MockPlayedGameRepository_Update_Call) RunAndReturn(run func(ctx context.Context, game *PlayedGameUpdate) (int, error)) *MockPlayedGameRepository_Update_Call {
+func (_c *MockPlayedGameRepository_Update_Call) RunAndReturn(run func(ctx context.Context, game *PlayedGame) (int, error)) *MockPlayedGameRepository_Update_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// NewMockGameRepository creates a new instance of MockGameRepository. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// NewMockGameService creates a new instance of MockGameService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
-func NewMockGameRepository(t interface {
+func NewMockGameService(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MockGameRepository {
-	mock := &MockGameRepository{}
+}) *MockGameService {
+	mock := &MockGameService{}
 	mock.Mock.Test(t)
 
 	t.Cleanup(func() { mock.AssertExpectations(t) })
@@ -683,60 +745,60 @@ func NewMockGameRepository(t interface {
 	return mock
 }
 
-// MockGameRepository is an autogenerated mock type for the GameRepository type
-type MockGameRepository struct {
+// MockGameService is an autogenerated mock type for the GameService type
+type MockGameService struct {
 	mock.Mock
 }
 
-type MockGameRepository_Expecter struct {
+type MockGameService_Expecter struct {
 	mock *mock.Mock
 }
 
-func (_m *MockGameRepository) EXPECT() *MockGameRepository_Expecter {
-	return &MockGameRepository_Expecter{mock: &_m.Mock}
+func (_m *MockGameService) EXPECT() *MockGameService_Expecter {
+	return &MockGameService_Expecter{mock: &_m.Mock}
 }
 
-// FindOne provides a mock function for the type MockGameRepository
-func (_mock *MockGameRepository) FindOne(ctx context.Context, id int) (*game.Game, error) {
-	ret := _mock.Called(ctx, id)
+// GetOne provides a mock function for the type MockGameService
+func (_mock *MockGameService) GetOne(ctx context.Context, gameID int) (*game.Game, error) {
+	ret := _mock.Called(ctx, gameID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for FindOne")
+		panic("no return value specified for GetOne")
 	}
 
 	var r0 *game.Game
 	var r1 error
 	if returnFunc, ok := ret.Get(0).(func(context.Context, int) (*game.Game, error)); ok {
-		return returnFunc(ctx, id)
+		return returnFunc(ctx, gameID)
 	}
 	if returnFunc, ok := ret.Get(0).(func(context.Context, int) *game.Game); ok {
-		r0 = returnFunc(ctx, id)
+		r0 = returnFunc(ctx, gameID)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*game.Game)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, int) error); ok {
-		r1 = returnFunc(ctx, id)
+		r1 = returnFunc(ctx, gameID)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockGameRepository_FindOne_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindOne'
-type MockGameRepository_FindOne_Call struct {
+// MockGameService_GetOne_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetOne'
+type MockGameService_GetOne_Call struct {
 	*mock.Call
 }
 
-// FindOne is a helper method to define mock.On call
+// GetOne is a helper method to define mock.On call
 //   - ctx context.Context
-//   - id int
-func (_e *MockGameRepository_Expecter) FindOne(ctx interface{}, id interface{}) *MockGameRepository_FindOne_Call {
-	return &MockGameRepository_FindOne_Call{Call: _e.mock.On("FindOne", ctx, id)}
+//   - gameID int
+func (_e *MockGameService_Expecter) GetOne(ctx interface{}, gameID interface{}) *MockGameService_GetOne_Call {
+	return &MockGameService_GetOne_Call{Call: _e.mock.On("GetOne", ctx, gameID)}
 }
 
-func (_c *MockGameRepository_FindOne_Call) Run(run func(ctx context.Context, id int)) *MockGameRepository_FindOne_Call {
+func (_c *MockGameService_GetOne_Call) Run(run func(ctx context.Context, gameID int)) *MockGameService_GetOne_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -754,12 +816,12 @@ func (_c *MockGameRepository_FindOne_Call) Run(run func(ctx context.Context, id 
 	return _c
 }
 
-func (_c *MockGameRepository_FindOne_Call) Return(game1 *game.Game, err error) *MockGameRepository_FindOne_Call {
+func (_c *MockGameService_GetOne_Call) Return(game1 *game.Game, err error) *MockGameService_GetOne_Call {
 	_c.Call.Return(game1, err)
 	return _c
 }
 
-func (_c *MockGameRepository_FindOne_Call) RunAndReturn(run func(ctx context.Context, id int) (*game.Game, error)) *MockGameRepository_FindOne_Call {
+func (_c *MockGameService_GetOne_Call) RunAndReturn(run func(ctx context.Context, gameID int) (*game.Game, error)) *MockGameService_GetOne_Call {
 	_c.Call.Return(run)
 	return _c
 }

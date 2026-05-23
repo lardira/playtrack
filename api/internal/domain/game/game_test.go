@@ -1,6 +1,7 @@
 package game
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/alecthomas/assert/v2"
@@ -9,56 +10,54 @@ import (
 
 func TestValidGame(t *testing.T) {
 	url := testutil.Faker().URL()
-	invalidURL := "example.cra"
+	title := testutil.Faker().Word()
+	validHours := testutil.Faker().IntRange(MinGameHoursToBeat, 100)
 
 	tcases := []struct {
-		name string
-		game Game
-		want error
+		name        string
+		gameTitle   string
+		hoursToBeat int
+		url         *string
+		want        error
 	}{
 		{
 			"valid game",
-			Game{
-				HoursToBeat: MinGameHoursToBeat,
-				URL:         &url,
-				Points:      MinGamePoints,
-			},
+			title,
+			validHours,
+			&url,
 			nil,
 		},
 		{
 			"invalid hours to beat",
-			Game{
-				HoursToBeat: MinGameHoursToBeat - 1,
-				URL:         &url,
-				Points:      MinGamePoints,
-			},
+			title,
+			MinGameHoursToBeat - 1,
+			&url,
 			ErrMinHoursToBeat,
 		},
 		{
 			"invalid url",
-			Game{
-				HoursToBeat: MinGameHoursToBeat,
-				URL:         &invalidURL,
-				Points:      MinGamePoints,
-			},
+			title,
+			validHours,
+			new("example.cra"),
 			ErrInvalidGameSiteURL,
 		},
 		{
-			"invalid points",
-			Game{
-				HoursToBeat: MinGameHoursToBeat,
-				URL:         &url,
-				Points:      MinGamePoints - 1,
-			},
-			ErrMinPoints,
+			"invalid title",
+			strings.Repeat("t", MinGameTitleLen-1),
+			validHours,
+			&url,
+			ErrMinTitleLen,
 		},
 	}
 
 	for _, tt := range tcases {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.game.Valid()
+			_, err := NewGame(tt.gameTitle, tt.hoursToBeat, tt.url)
 
 			assert.IsError(t, err, tt.want)
+			if err != nil {
+				return
+			}
 		})
 	}
 }

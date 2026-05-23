@@ -7,3 +7,20 @@ html,
 body {
 	@apply h-full overflow-hidden;
 }
+
+@layer utilities {
+	.scrollbar-hide {
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+	}
+	.scrollbar-hide::-webkit-scrollbar {
+		display: none;
+	}
+}
+
+[data-theme] .player-pill {
+	box-shadow: 0 0 0 1px rgb(var(--color-surface-500));
+}
+[data-theme] .player-pill:hover {
+	box-shadow: 0 0 0 1px rgb(var(--color-surface-400));
+}

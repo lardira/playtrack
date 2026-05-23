@@ -37,10 +37,11 @@ services:
     build: api/.
     restart: unless-stopped
     environment:
+      ENV_MODE: ${ENV_MODE}
+      DB_URL: ${DB_URL}
       SERVER_HOST: ${SERVER_HOST}
       SERVER_PORT: ${SERVER_PORT}
       JWT_TOKEN_SECRET: ${JWT_TOKEN_SECRET}
-      DB_URL: ${DB_URL}
     networks:
       - proxy
       - api

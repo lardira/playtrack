@@ -8,9 +8,11 @@ import (
 )
 
 const (
-	maxConsecutiveErr = 5
+	maxHealthyConsecutive = 5
+	maxConsecutive        = maxHealthyConsecutive * 5
 
 	defaultPollInterval = 10 * time.Second
+	defaultBackoff      = 2 * time.Minute
 )
 
 type Pinger interface {
@@ -22,6 +24,8 @@ type HealthChecker struct {
 	pollInterval time.Duration
 	pinger       Pinger
 	tag          string
+
+	onDone func()
 }
 
 func NewHealthChecker(pinger Pinger, pollInterval time.Duration, tag string) *HealthChecker {
@@ -41,13 +45,21 @@ func (c *HealthChecker) Check(ctx context.Context) {
 	for {
 		select {
 		case <-ticker:
-			if err := c.pinger.Ping(ctx); err != nil {
-				log.Printf("could not ping %s", c.tag)
-
-				newCount := c.errCount.Add(1)
-				if newCount >= maxConsecutiveErr {
-					log.Panicf("could not ping %s for %d times", c.tag, newCount)
+			currErrCount := c.errCount.Load()
+			if currErrCount >= maxConsecutive {
+				select {
+				case <-time.After(defaultBackoff):
+				case <-ctx.Done():
+					log.Printf("health checker stopped")
+					c.errCount.Store(0)
+					return
 				}
+			}
+
+			err := c.pinger.Ping(ctx)
+			if err != nil {
+				log.Printf("could not ping %s", c.tag)
+				c.errCount.Add(1)
 				continue
 			}
 
@@ -57,11 +69,12 @@ func (c *HealthChecker) Check(ctx context.Context) {
 
 		case <-ctx.Done():
 			log.Printf("health checker stopped")
+			c.errCount.Store(0)
 			return
 		}
 	}
 }
 
 func (c *HealthChecker) Ok() bool {
-	return c.errCount.Load() < maxConsecutiveErr
+	return c.errCount.Load() < maxHealthyConsecutive
 }

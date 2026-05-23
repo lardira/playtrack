@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"slices"
@@ -20,21 +19,6 @@ const (
 
 	authPrefix = "Bearer "
 )
-
-type humaContext huma.Context
-
-type authContext struct {
-	humaContext
-	playerID string
-	isAdmin  bool
-}
-
-func (c *authContext) Context() context.Context {
-	return ctxutil.SetPlayer(
-		c.humaContext.Context(),
-		ctxutil.CtxPlayer{ID: c.playerID, IsAdmin: c.isAdmin},
-	)
-}
 
 func Authorize(secret string) func(ctx huma.Context, next func(huma.Context)) {
 	return func(ctx huma.Context, next func(huma.Context)) {
@@ -86,11 +70,10 @@ func Authorize(secret string) func(ctx huma.Context, next func(huma.Context)) {
 			return
 		}
 
-		authCtx := authContext{
-			humaContext: ctx,
-			playerID:    playerID,
-			isAdmin:     slices.Contains(aud, apiutil.RoleAdmin),
-		}
-		next(&authCtx)
+		ctx = huma.WithContext(ctx, ctxutil.SetPlayer(
+			ctx.Context(),
+			ctxutil.CtxPlayer{ID: playerID, IsAdmin: slices.Contains(aud, apiutil.RoleAdmin)},
+		))
+		next(ctx)
 	}
 }

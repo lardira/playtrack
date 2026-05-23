@@ -6,18 +6,27 @@
 	let games: Game[] = [];
 	let loading = true;
 	let loadError = "";
+	let loadGeneration = 0;
 
 	onMount(() => {
+		const gen = ++loadGeneration;
 		getGames()
 			.then((list) => {
+				if (gen !== loadGeneration) return;
 				games = list ?? [];
 				loadError = "";
 			})
 			.catch((err) => {
+				if (gen !== loadGeneration) return;
 				loadError = err?.message ?? "Не удалось загрузить шаблоны игр";
 				games = [];
 			})
-			.finally(() => (loading = false));
+			.finally(() => {
+				if (gen === loadGeneration) loading = false;
+			});
+		return () => {
+			loadGeneration++;
+		};
 	});
 </script>
 
